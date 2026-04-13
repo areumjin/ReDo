@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import type { CardData } from "../types";
+import { sortByRelevance, buildKeywordCloud } from "../lib/relevanceScore";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
@@ -191,10 +192,44 @@ export function AIRecommendScreen({
   onCardTap,
   onExecute,
 }: AIRecommendScreenProps) {
-  // Show top 3 unexecuted cards
-  const recommended = cards
-    .filter((c) => !executedCardIds.has(c.id) && c.statusDot !== "실행완료")
-    .slice(0, 3);
+  const [activeKeyword, setActiveKeyword] = useState<string | null>(null);
+
+  // Keyword cloud from all cards
+  const keywordCloud = useMemo(() => buildKeywordCloud(cards, 10), [cards]);
+
+  // Relevance context — use most frequent project tag as context
+  const projectFreq: Record<string, number> = {};
+  for (const card of cards) {
+    if (!executedCardIds.has(card.id) && card.statusDot !== "실행완료") {
+      projectFreq[card.projectTag] = (projectFreq[card.projectTag] ?? 0) + 1;
+    }
+  }
+  const topProject = Object.entries(projectFreq).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  // Build context: active keyword filter or top project
+  const context = {
+    projectTag: topProject,
+    chips: activeKeyword ? [activeKeyword] : undefined,
+  };
+
+  // Relevance-sorted unexecuted cards
+  const unexecuted = cards.filter(
+    (c) => !executedCardIds.has(c.id) && c.statusDot !== "실행완료"
+  );
+  const keywordFiltered = activeKeyword
+    ? unexecuted.filter(
+        (c) =>
+          c.chips.some((ch) => ch.toLowerCase() === activeKeyword.toLowerCase()) ||
+          c.savedReason?.toLowerCase().includes(activeKeyword.toLowerCase()) ||
+          c.title?.toLowerCase().includes(activeKeyword.toLowerCase())
+      )
+    : unexecuted;
+
+  const recommended = useMemo(
+    () => sortByRelevance(keywordFiltered, context, executedCardIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [keywordFiltered, activeKeyword, topProject]
+  ).slice(0, 6);
 
   return (
     <div
@@ -293,7 +328,7 @@ export function AIRecommendScreen({
             background: "#EEEFFE",
             borderRadius: 10,
             padding: "10px 14px",
-            marginBottom: 16,
+            marginBottom: 12,
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -328,13 +363,59 @@ export function AIRecommendScreen({
               fontFamily: FONT,
             }}
           >
-            브랜딩 과제와 연관된 레퍼런스{" "}
+            {topProject ? (
+              <>
+                <span style={{ fontWeight: 500, color: "var(--redo-brand-dark)" }}>
+                  {topProject}
+                </span>
+                와 연관된 레퍼런스{" "}
+              </>
+            ) : "미실행 레퍼런스 "}
             <span style={{ fontWeight: 500, color: "var(--redo-brand-dark)" }}>
               {recommended.length}개
             </span>
             를 발견했어요
           </p>
         </div>
+
+        {/* Keyword cloud chips */}
+        {keywordCloud.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              marginBottom: 14,
+            }}
+          >
+            {keywordCloud.map(({ keyword }) => {
+              const isActive = activeKeyword === keyword;
+              return (
+                <button
+                  key={keyword}
+                  onClick={() => setActiveKeyword(isActive ? null : keyword)}
+                  style={{
+                    height: 28,
+                    paddingLeft: 12,
+                    paddingRight: 12,
+                    borderRadius: 999,
+                    border: isActive ? "none" : "0.5px solid var(--redo-border)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: isActive ? 500 : 400,
+                    fontFamily: FONT,
+                    background: isActive ? "var(--redo-brand)" : "var(--redo-bg-secondary)",
+                    color: isActive ? "#fff" : "var(--redo-text-secondary)",
+                    transition: "all 120ms ease",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  {keyword}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Card list */}
         {recommended.length > 0 ? (

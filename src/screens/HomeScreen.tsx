@@ -1,7 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ALL_CARDS, type CardData } from "../types";
+import {
+  sortByRelevance,
+  buildContext,
+  getTopRelevant,
+  getRediscoverCards,
+} from "../lib/relevanceScore";
 
 // ─── Keyframe injection ───────────────────────────────────────────────────────
 
@@ -517,15 +523,22 @@ function AIExpandSection({
   executedCardIds,
   onCardTap,
   onClose,
+  activeFilter,
+  recentlyViewedIds,
 }: {
   cards: CardData[];
   executedCardIds: Set<number>;
   onCardTap: (card: CardData) => void;
   onClose: () => void;
+  activeFilter?: string;
+  recentlyViewedIds?: number[];
 }) {
-  const topCards = cards
-    .filter((c) => !executedCardIds.has(c.id) && c.statusDot !== "실행완료")
-    .slice(0, 3);
+  const context = buildContext(cards, activeFilter ?? "전체", recentlyViewedIds ?? []);
+  const topCards = getTopRelevant(cards, context, executedCardIds, 3);
+  // fallback if no relevant cards found
+  const displayCards = topCards.length > 0
+    ? topCards
+    : cards.filter((c) => !executedCardIds.has(c.id) && c.statusDot !== "실행완료").slice(0, 3);
 
   return (
     <div
@@ -586,7 +599,7 @@ function AIExpandSection({
           scrollbarWidth: "none",
         }}
       >
-        {topCards.map((card) => (
+        {displayCards.map((card) => (
           <div
             key={card.id}
             onClick={() => onCardTap(card)}
@@ -658,11 +671,266 @@ function AIExpandSection({
           </div>
         ))}
 
-        {topCards.length === 0 && (
+        {displayCards.length === 0 && (
           <p style={{ fontSize: 13, color: "#888780", fontFamily: FONT, padding: "4px 0 8px" }}>
             미실행 레퍼런스가 없어요 🎉
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Search Bar ──────────────────────────────────────────────────────────────
+
+function SearchBar({
+  value,
+  onChange,
+  onClear,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      style={{
+        margin: "0 16px 10px",
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      {/* Search icon */}
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        style={{
+          position: "absolute",
+          left: 12,
+          pointerEvents: "none",
+          flexShrink: 0,
+        }}
+      >
+        <circle cx="11" cy="11" r="7" stroke="var(--redo-text-tertiary)" strokeWidth="2" />
+        <path d="M16.5 16.5L21 21" stroke="var(--redo-text-tertiary)" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="제목, 저장 이유, 키워드 검색"
+        style={{
+          width: "100%",
+          height: 38,
+          minHeight: 44,
+          paddingLeft: 36,
+          paddingRight: value ? 36 : 12,
+          fontSize: 13,
+          fontFamily: FONT,
+          color: "var(--redo-text-primary)",
+          background: "var(--redo-bg-secondary)",
+          border: "1px solid transparent",
+          borderRadius: 10,
+          outline: "none",
+          boxSizing: "border-box",
+          transition: "border-color 150ms ease",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "var(--redo-brand)";
+          e.currentTarget.style.background = "#fff";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "transparent";
+          e.currentTarget.style.background = "var(--redo-bg-secondary)";
+        }}
+      />
+
+      {/* Clear button */}
+      {value && (
+        <button
+          onClick={() => { onClear(); inputRef.current?.focus(); }}
+          style={{
+            position: "absolute",
+            right: 8,
+            width: 20,
+            height: 20,
+            borderRadius: "50%",
+            background: "var(--redo-text-tertiary)",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Rediscover Section ───────────────────────────────────────────────────────
+
+function RediscoverSection({
+  cards,
+  executedCardIds,
+  onCardTap,
+}: {
+  cards: CardData[];
+  executedCardIds: Set<number>;
+  onCardTap: (card: CardData) => void;
+}) {
+  const rediscoverCards = getRediscoverCards(cards, executedCardIds, 2);
+  if (rediscoverCards.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {/* Section header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          paddingLeft: 16,
+          paddingRight: 16,
+          marginBottom: 8,
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M1 4v6h6M23 20v-6h-6"
+            stroke="var(--redo-text-secondary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"
+            stroke="var(--redo-text-secondary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: "var(--redo-text-secondary)",
+            fontFamily: FONT,
+            letterSpacing: "0.03em",
+            textTransform: "uppercase",
+          }}
+        >
+          다시 꺼내볼 레퍼런스
+        </span>
+      </div>
+
+      {/* Horizontal scroll */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          paddingLeft: 16,
+          paddingRight: 16,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}
+      >
+        {rediscoverCards.map((card) => (
+          <div
+            key={card.id}
+            onClick={() => onCardTap(card)}
+            style={{
+              width: 140,
+              flexShrink: 0,
+              borderRadius: 10,
+              overflow: "hidden",
+              border: "0.5px solid var(--redo-border)",
+              background: "var(--redo-bg-primary)",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {/* Image */}
+            <div style={{ height: 88, position: "relative", overflow: "hidden" }}>
+              {card.image ? (
+                <img
+                  src={card.image}
+                  alt={card.title}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: PLACEHOLDER_BG[card.projectTag] ?? "#F1EFE8",
+                  }}
+                />
+              )}
+              {/* Age badge */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 5,
+                  left: 7,
+                  background: "rgba(0,0,0,0.5)",
+                  borderRadius: 20,
+                  padding: "2px 7px",
+                }}
+              >
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.9)", fontFamily: FONT }}>
+                  {card.daysAgo}
+                </span>
+              </div>
+            </div>
+            {/* Text */}
+            <div style={{ padding: "7px 8px 8px" }}>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 400,
+                  color: "var(--redo-text-secondary)",
+                  margin: 0,
+                  marginBottom: 2,
+                  fontFamily: FONT,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {card.projectTag}
+              </p>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--redo-text-primary)",
+                  margin: 0,
+                  lineHeight: 1.35,
+                  fontFamily: FONT,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {card.title}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -901,9 +1169,20 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const [aiExpanded, setAiExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState("전체");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
 
   const cardSource = cardsProp ?? ALL_CARDS;
   const execSet = executedCardIds ?? new Set<number>();
+
+  // Track recently viewed cards for relevance context
+  const handleCardTap = useCallback((card: CardData) => {
+    setRecentlyViewedIds((prev) => {
+      const next = [card.id, ...prev.filter((id) => id !== card.id)].slice(0, 10);
+      return next;
+    });
+    onCardTap?.(card);
+  }, [onCardTap]);
 
   const totalCount = cardSource.length;
   const executedCount = cardSource.filter(
@@ -914,17 +1193,36 @@ export function HomeScreen({
   // Project filter
   const projectTags = Array.from(new Set(cardSource.map((c) => c.projectTag)));
   const filterChips = ["전체", ...projectTags];
-  const filteredCards = activeFilter === "전체"
-    ? cardSource
-    : cardSource.filter((c) => c.projectTag === activeFilter);
 
-  // Sort: unexecuted first, executed last
-  const sortedCards = [...filteredCards].sort((a, b) => {
-    const aExec = execSet.has(a.id) || a.statusDot === "실행완료";
-    const bExec = execSet.has(b.id) || b.statusDot === "실행완료";
-    if (aExec === bExec) return 0;
-    return aExec ? 1 : -1;
-  });
+  // Search filter
+  const searchFiltered = searchQuery.trim().length > 0
+    ? cardSource.filter((c) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          c.title.toLowerCase().includes(q) ||
+          c.savedReason.toLowerCase().includes(q) ||
+          c.projectTag.toLowerCase().includes(q) ||
+          c.chips.some((chip) => chip.toLowerCase().includes(q))
+        );
+      })
+    : cardSource;
+
+  const filteredCards = activeFilter === "전체"
+    ? searchFiltered
+    : searchFiltered.filter((c) => c.projectTag === activeFilter);
+
+  // Relevance-based sorting when a project filter is active or recent cards exist
+  const context = buildContext(cardSource, activeFilter, recentlyViewedIds);
+  const hasContext = activeFilter !== "전체" || recentlyViewedIds.length > 0;
+
+  const sortedCards = hasContext
+    ? sortByRelevance(filteredCards, context, execSet)
+    : [...filteredCards].sort((a, b) => {
+        const aExec = execSet.has(a.id) || a.statusDot === "실행완료";
+        const bExec = execSet.has(b.id) || b.statusDot === "실행완료";
+        if (aExec === bExec) return 0;
+        return aExec ? 1 : -1;
+      });
 
   return (
     <div
@@ -989,18 +1287,36 @@ export function HomeScreen({
             <AIExpandSection
               cards={cardSource}
               executedCardIds={execSet}
-              onCardTap={(card) => onCardTap?.(card)}
+              onCardTap={handleCardTap}
               onClose={() => setAiExpanded(false)}
+              activeFilter={activeFilter}
+              recentlyViewedIds={recentlyViewedIds}
             />
           </div>
         </div>
+
+        {/* Search bar */}
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onClear={() => setSearchQuery("")}
+        />
+
+        {/* Rediscover section — only show when not searching and filter is "전체" */}
+        {!searchQuery && activeFilter === "전체" && (
+          <RediscoverSection
+            cards={cardSource}
+            executedCardIds={execSet}
+            onCardTap={handleCardTap}
+          />
+        )}
 
         {/* Project filter chips */}
         <div
           style={{
             display: "flex",
             gap: 6,
-            padding: "4px 12px 10px",
+            padding: "0 12px 10px",
             overflowX: "auto",
             scrollbarWidth: "none",
             flexWrap: "nowrap",
@@ -1038,6 +1354,22 @@ export function HomeScreen({
           })}
         </div>
 
+        {/* Search result header */}
+        {searchQuery.trim().length > 0 && (
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--redo-text-secondary)",
+              fontFamily: FONT,
+              margin: 0,
+              padding: "0 14px 8px",
+              lineHeight: 1.4,
+            }}
+          >
+            "{searchQuery}" 검색 결과 {sortedCards.length}개
+          </p>
+        )}
+
         {/* Moodboard grid or empty state */}
         {sortedCards.length > 0 ? (
           <div
@@ -1052,7 +1384,7 @@ export function HomeScreen({
                 key={card.id}
                 card={card}
                 index={index}
-                onTap={(c) => onCardTap?.(c)}
+                onTap={handleCardTap}
                 executedCardIds={execSet}
               />
             ))}
