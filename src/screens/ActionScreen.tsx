@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ImageWithFallback } from "../components/ImageWithFallback";
-import { ALL_CARDS, type CardData } from "../types";
+import { type CardData } from "../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -603,19 +603,20 @@ function NoCardsState({ onFabPress }: { onFabPress?: () => void }) {
 // ─── Action Screen ────────────────────────────────────────────────────────────
 
 interface ActionScreenProps {
+  cards?: CardData[];
   onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
   onExecuteCard?: (id: number) => void;
 }
 
-export function ActionScreen({ onTabChange, onFabPress, executedCardIds, onExecuteCard }: ActionScreenProps) {
+export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCardIds, onExecuteCard }: ActionScreenProps) {
   // ── Derive swipe deck ONCE at mount — frozen for this session ──────────
-  // Excludes cards already marked 실행완료 in ALL_CARDS, plus any executed
+  // Excludes cards already marked 실행완료, plus any executed
   // this session (executedCardIds from App.tsx) so returning users see a
   // trimmed deck without previously executed cards.
   const [swipeCards] = useState<CardData[]>(() =>
-    ALL_CARDS.filter(
+    cards.filter(
       (c) => c.statusDot === "미실행" && !(executedCardIds?.has(c.id))
     )
   );
@@ -912,7 +913,7 @@ export function ActionScreen({ onTabChange, onFabPress, executedCardIds, onExecu
           className="flex-1 relative"
           style={{ marginBottom: isDone ? 0 : 16 }}
         >
-          {swipeCards.length === 0 && ALL_CARDS.length === 0 ? (
+          {swipeCards.length === 0 && cards.length === 0 ? (
             /* No cards saved at all */
             <div className="flex items-center justify-center" style={{ height: "100%" }}>
               <NoCardsState onFabPress={onFabPress} />

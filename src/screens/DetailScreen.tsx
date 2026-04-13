@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { ImageWithFallback } from "../components/ImageWithFallback";
-import { ALL_CARDS, type CardData } from "../types";
+import { type CardData } from "../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -79,6 +79,7 @@ function RelatedCard({
 
 interface DetailScreenProps {
   card: CardData | null;
+  allCards?: CardData[];
   backLabel: string;
   onBack: () => void;
   onRelatedTap?: (card: CardData) => void;
@@ -90,6 +91,7 @@ interface DetailScreenProps {
 
 export function DetailScreen({
   card,
+  allCards = [],
   backLabel,
   onBack,
   onRelatedTap,
@@ -173,12 +175,12 @@ export function DetailScreen({
 
   // Related cards logic
   const relatedCards = card
-    ? ALL_CARDS.filter((c) => c.projectTag === card.projectTag && c.id !== card.id)
+    ? allCards.filter((c) => c.projectTag === card.projectTag && c.id !== card.id)
     : [];
   const displayedRelated =
     relatedCards.length > 0
       ? relatedCards
-      : ALL_CARDS.filter((c) => c.id !== card?.id).slice(0, 3);
+      : allCards.filter((c) => c.id !== card?.id).slice(0, 3);
 
   if (!card) return null;
 

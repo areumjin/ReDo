@@ -394,7 +394,7 @@ export default function App() {
           style={{
             width: 56,
             height: 56,
-            background: "#6A70FF",
+            background: "var(--redo-brand)",
             borderRadius: 16,
             display: "flex",
             alignItems: "center",
@@ -411,7 +411,7 @@ export default function App() {
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: "#6A70FF",
+                background: "var(--redo-brand)",
                 animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
               }}
             />
@@ -518,6 +518,7 @@ export default function App() {
               )}
               {activeTab === "활용" && (
                 <ActionScreen
+                  cards={cards}
                   onTabChange={handleTabChange}
                   onFabPress={() => setSheetOpen(true)}
                   executedCardIds={executedCardIds}
@@ -559,6 +560,7 @@ export default function App() {
             >
               <DetailScreen
                 card={selectedCard}
+                allCards={cards}
                 backLabel={BACK_LABELS[returnTab]}
                 onBack={handleCloseDetail}
                 onRelatedTap={handleRelatedTap}

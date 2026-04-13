@@ -35,7 +35,7 @@ function Toast({
     : isError
     ? "var(--redo-danger)"
     : isLater
-    ? "#B4B2A9"
+    ? "var(--redo-text-tertiary)"
     : "var(--redo-warning)";
 
   const transform =
@@ -74,7 +74,7 @@ function Toast({
           paddingLeft: 12,
           paddingRight: 16,
           gap: 8,
-          background: "#2C2C2A",
+          background: "var(--redo-text-primary)",
           borderRadius: 20,
           maxWidth: 280,
           cursor: "pointer",

@@ -61,7 +61,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
           style={{
             width: 64,
             height: 64,
-            background: "#6A70FF",
+            background: "var(--redo-brand)",
             borderRadius: 18,
             display: "flex",
             alignItems: "center",
@@ -87,7 +87,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
         <p
           style={{
             fontSize: 14,
-            color: "#888780",
+            color: "var(--redo-text-secondary)",
             margin: "6px 0 0",
           }}
         >
@@ -119,7 +119,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
             background: "#FAFAFA",
             transition: "border-color 180ms",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#6A70FF")}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--redo-brand)")}
           onBlur={(e) => (e.currentTarget.style.borderColor = "#E5E5E5")}
         />
         <input
@@ -142,7 +142,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
             background: "#FAFAFA",
             transition: "border-color 180ms",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#6A70FF")}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--redo-brand)")}
           onBlur={(e) => (e.currentTarget.style.borderColor = "#E5E5E5")}
         />
 
@@ -151,7 +151,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
           <p
             style={{
               fontSize: 13,
-              color: error.includes("확인 이메일") ? "#1D9E75" : "#E53935",
+              color: error.includes("확인 이메일") ? "var(--redo-success)" : "#E53935",
               margin: 0,
               textAlign: "center",
             }}
@@ -170,7 +170,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
             fontSize: 16,
             fontWeight: 700,
             color: "#fff",
-            background: loading ? "#A9ACFF" : "#6A70FF",
+            background: loading ? "#A9ACFF" : "var(--redo-brand)",
             border: "none",
             borderRadius: 12,
             cursor: loading ? "not-allowed" : "pointer",
@@ -184,7 +184,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
 
         {/* Mode switch */}
         <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 4 }}>
-          <span style={{ fontSize: 14, color: "#888780" }}>
+          <span style={{ fontSize: 14, color: "var(--redo-text-secondary)" }}>
             {mode === "login" ? "계정이 없으신가요?" : "이미 계정이 있으신가요?"}
           </span>
           <button
@@ -193,7 +193,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
             style={{
               fontSize: 14,
               fontWeight: 700,
-              color: "#6A70FF",
+              color: "var(--redo-brand)",
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -228,8 +228,8 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
             padding: "14px",
             fontSize: 15,
             fontWeight: 600,
-            color: "#534AB7",
-            background: "#EEEFFE",
+            color: "var(--redo-brand-dark)",
+            background: "var(--redo-brand-light)",
             border: "none",
             borderRadius: 12,
             cursor: "pointer",

@@ -1,181 +1,156 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
+  --font-size: 14px;
 
-  /* === CUSTOMIZE: Brand Colors === */
-  --brand: #6A70FF;
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
+  /* ===== ReDo Design System ===== */
 
-  /* === Surface & Background === */
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* Brand */
+  --redo-brand: #6A70FF;
+  --redo-brand-light: #EEEFFE;
+  --redo-brand-dark: #4B52E0;
+  --redo-brand-mid: #A5A9FF;
 
-  /* === Secondary & Muted === */
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  /* Backgrounds */
+  --redo-bg-primary: #FFFFFF;
+  --redo-bg-secondary: #F8F7F4;
+  --redo-bg-input: #F1EFE8;
 
-  /* === Status Colors === */
-  --destructive: #E24B4A;
-  --destructive-foreground: #ffffff;
-  --success: #1D9E75;
-  --success-foreground: #ffffff;
-  --warning: #EF9F27;
-  --warning-foreground: #ffffff;
-  --info: #3B82F6;
-  --info-foreground: #ffffff;
+  /* Text */
+  --redo-text-primary: #2C2C2A;
+  --redo-text-secondary: #888780;
+  --redo-text-tertiary: #B4B2A9;
 
-  /* === Text Hierarchy === */
-  --text-primary: #3C3C3C;
-  --text-secondary: #6A6A6A;
-  --text-tertiary: #7A7A7A;
-  --text-disabled: #9B9B9B;
-  --icon-default: #4A5568;
+  /* Context box */
+  --redo-context-bg: #EEEFFE;
+  --redo-context-text: #3C3489;
+  --redo-context-label: #4B52E0;
 
-  /* === Surface Colors === */
-  --surface-page: #FFFFFF;
-  --surface-subtle: #FAFAFA;
-  --surface-muted: #EBEBF0;
-  --brand-tint: #EEEFFE;
-  --alert-badge: #FF4444;
+  /* Semantic */
+  --redo-success: #1D9E75;
+  --redo-warning: #EF9F27;
+  --redo-danger: #E24B4A;
 
-  /* === ReDo Custom: Context Box (저장 이유 박스) === */
-  --context-box-bg: #EEEFFE;
-  --context-box-text: #3C3489;
+  /* Border */
+  --redo-border: rgba(0, 0, 0, 0.12);
 
-  /* === Borders & Inputs === */
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  /* Chip active (status) */
+  --redo-chip-status-bg: #E1F5EE;
+  --redo-chip-status-text: #085041;
 
-  /* === Typography === */
+  /* Typography sizes */
+  --text-heading: 20px;
+  --text-subheading: 18px;
+  --text-body: 14px;
+  --text-card-title: 13px;
+  --text-caption: 12px;
+  --text-micro: 11px;
+  --text-context-label: 10px;
+
+  /* Font weights */
+  --font-weight-regular: 400;
   --font-weight-medium: 500;
-  --font-weight-normal: 400;
 
-  /* === Focus Ring === */
-  --ring: oklch(0.708 0 0);
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
 
-  /* === Chart Colors === */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Border radius */
+  --radius-chip: 20px;
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-sheet: 20px;
+  --radius-context: 8px;
 
-  /* === Radius === */
-  --radius: 0.625rem;
+  /* Shadows */
+  --shadow-fab: 0 2px 10px rgba(106, 112, 255, 0.4);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
 
-  /* === Shadows === */
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-button: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.08);
-  --shadow-elevated: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-modal: 0 8px 24px rgba(0,0,0,0.12);
+  /* Swipe tint overlays (활용 탭 전용) */
+  --redo-swipe-tint-right: rgba(106, 112, 255, 0.12);
+  --redo-swipe-tint-left: rgba(226, 75, 74, 0.12);
 
-  /* === Motion / Animation === */
-  --duration-fast: 100ms;
-  --duration-normal: 200ms;
-  --duration-moderate: 300ms;
-  --duration-slow: 350ms;
-  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Legacy vars kept for compatibility */
+  --font-weight-semibold: 500;
+  --font-weight-bold: 500;
 
-  /* === Sidebar === */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: var(--redo-bg-primary);
+  --foreground: var(--redo-text-primary);
+  --card: var(--redo-bg-primary);
+  --card-foreground: var(--redo-text-primary);
+  --popover: var(--redo-bg-primary);
+  --popover-foreground: var(--redo-text-primary);
+  --primary: var(--redo-brand);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--redo-bg-secondary);
+  --secondary-foreground: var(--redo-text-secondary);
+  --muted: rgba(0, 27, 55, 0.08);
+  --muted-foreground: var(--redo-text-tertiary);
+  --accent: var(--redo-brand);
+  --accent-foreground: #FFFFFF;
+  --destructive: var(--redo-danger);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--redo-border);
+  --input: var(--redo-bg-input);
+  --input-background: var(--redo-bg-input);
+  --ring: var(--redo-brand);
+  --elevation-sm: var(--shadow-card);
+  --chart-1: var(--redo-brand);
+  --chart-2: #A5A9FF;
+  --chart-3: var(--redo-success);
+  --chart-4: var(--redo-warning);
+  --chart-5: var(--redo-danger);
+  --radius: var(--radius-card);
+  --radius-card: 14px;
+  --radius-button: 10px;
+  --sidebar: var(--redo-bg-primary);
+  --sidebar-foreground: var(--redo-text-primary);
+  --sidebar-primary: var(--redo-brand);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--redo-brand);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: var(--redo-border);
+  --sidebar-ring: var(--redo-brand);
 }
 
 .dark {
-  /* === Background & Surface (brightness order: page < card < subtle) === */
-  --background: #121212;
-  --foreground: #E0E0E0;
-  --card: #1E1E1E;
-  --card-foreground: #E0E0E0;
-  --popover: #252525;
-  --popover-foreground: #E0E0E0;
-
-  /* === Text Hierarchy (dark) === */
-  --text-primary: #E0E0E0;
-  --text-secondary: #A0A0A0;
-  --text-tertiary: #808080;
-  --text-disabled: #555555;
-  --icon-default: #909090;
-
-  /* === Surface (dark) === */
-  --surface-page: #121212;
-  --surface-subtle: #252525;
-  --surface-muted: rgba(255, 255, 255, 0.08);
-  --brand-tint: rgba(106, 112, 255, 0.15);
-
-  /* === ReDo Custom: Context Box (dark) === */
-  --context-box-bg: rgba(106, 112, 255, 0.12);
-  --context-box-text: #A5A8FF;
-  --alert-badge: #FF5C5C;
-
-  /* === Key Color & Status (brightened for dark mode) === */
-  --brand: #8B8FFF;
-  --primary: #E0E0E0;
-  --primary-foreground: #121212;
-  --secondary: #252525;
-  --secondary-foreground: #E0E0E0;
-  --muted: #252525;
-  --muted-foreground: #808080;
-  --accent: #252525;
-  --accent-foreground: #E0E0E0;
-  --destructive: #FF7573;
-  --destructive-foreground: #121212;
-  --success: #3DC49A;
-  --success-foreground: #121212;
-  --warning: #F5B84A;
-  --warning-foreground: #121212;
-  --info: #64B5F6;
-  --info-foreground: #121212;
-
-  /* === Border & Input === */
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --input-background: #252525;
-  --switch-background: #404040;
-  --ring: #555555;
-
-  /* === Shadow → replaced by borders in dark mode === */
-  --shadow-card: none;
-  --shadow-button: none;
-  --shadow-card-hover: none;
-
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #1E1E1E;
-  --sidebar-foreground: #E0E0E0;
-  --sidebar-primary: #8B8FFF;
-  --sidebar-primary-foreground: #E0E0E0;
-  --sidebar-accent: #252525;
-  --sidebar-accent-foreground: #E0E0E0;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #555555;
+  --background: #1A1A1E;
+  --foreground: rgba(248, 250, 252, 0.90);
+  --card: #26262C;
+  --card-foreground: rgba(248, 250, 252, 0.90);
+  --popover: #26262C;
+  --popover-foreground: rgba(248, 250, 252, 0.90);
+  --primary: var(--redo-brand);
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(71, 85, 105, 0.30);
+  --secondary-foreground: rgba(226, 232, 240, 0.90);
+  --muted: rgba(71, 85, 105, 0.30);
+  --muted-foreground: rgba(148, 163, 184, 0.70);
+  --accent: var(--redo-brand);
+  --accent-foreground: #FFFFFF;
+  --destructive: var(--redo-danger);
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(71, 85, 105, 0.30);
+  --input: rgba(51, 65, 85, 1.00);
+  --input-background: rgba(51, 65, 85, 1.00);
+  --ring: var(--redo-brand);
+  --chart-1: var(--redo-brand);
+  --chart-2: #A5A9FF;
+  --chart-3: var(--redo-success);
+  --chart-4: var(--redo-warning);
+  --chart-5: var(--redo-danger);
+  --sidebar: #26262C;
+  --sidebar-foreground: rgba(248, 250, 252, 0.90);
+  --sidebar-primary: var(--redo-brand);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--redo-brand);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(71, 85, 105, 0.30);
+  --sidebar-ring: var(--redo-brand);
 }
 
 @theme inline {
@@ -195,29 +170,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-brand: var(--brand);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-tertiary);
-  --color-text-disabled: var(--text-disabled);
-  --color-icon-default: var(--icon-default);
-  --color-surface-page: var(--surface-page);
-  --color-surface-subtle: var(--surface-subtle);
-  --color-surface-muted: var(--surface-muted);
-  --color-brand-tint: var(--brand-tint);
-  --color-alert-badge: var(--alert-badge);
-  --color-context-box-bg: var(--context-box-bg);
-  --color-context-box-text: var(--context-box-text);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);
-  --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -228,6 +183,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: var(--radius-card);
+  --radius-button: var(--radius-button);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -236,4 +193,79 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-elevation-sm: var(--elevation-sm);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', 'Inter', system-ui, sans-serif;
+    font-size: var(--text-body);
+    font-weight: var(--font-weight-regular);
+    line-height: 1.6;
+  }
+}
+
+/**
+ * Base typography overrides for ReDo design system.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-heading);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.3;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    h2 {
+      font-size: var(--text-subheading);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.3;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    h3 {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.3;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    p {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-regular);
+      line-height: 1.6;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    label {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    button {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.4;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+    }
+
+    input {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-regular);
+      line-height: 1.4;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
 }

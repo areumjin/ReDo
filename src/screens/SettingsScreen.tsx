@@ -38,7 +38,7 @@ function MiniToast({ message, onDone }: { message: string | null; onDone: () => 
     >
       <div
         style={{
-          background: "#2C2C2A",
+          background: "var(--redo-text-primary)",
           color: "#fff",
           borderRadius: 20,
           padding: "10px 18px",
@@ -98,7 +98,7 @@ function SectionLabel({ label }: { label: string }) {
       style={{
         fontSize: 10,
         fontWeight: 500,
-        color: "#B4B2A9",
+        color: "var(--redo-text-tertiary)",
         textTransform: "uppercase",
         letterSpacing: "0.06em",
         margin: 0,
@@ -146,7 +146,7 @@ function Row({
         style={{
           fontSize: 14,
           fontWeight: 400,
-          color: danger ? "#E24B4A" : "var(--redo-text-primary)",
+          color: danger ? "var(--redo-danger)" : "var(--redo-text-primary)",
           fontFamily: FONT,
           lineHeight: 1.3,
         }}
@@ -163,7 +163,7 @@ function Row({
 function Chevron() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-      <path d="M9 18l6-6-6-6" stroke="#B4B2A9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 18l6-6-6-6" stroke="var(--redo-text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -240,7 +240,7 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
       style={{
         width: 375,
         height: 812,
-        background: "#F8F7F4",
+        background: "var(--redo-bg-secondary)",
         fontFamily: FONT,
         overflow: "hidden",
         display: "flex",
@@ -336,7 +336,7 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "#EEEFFE",
+              background: "var(--redo-brand-light)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -454,7 +454,7 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
                 style={{
                   fontSize: 13,
                   fontWeight: 400,
-                  color: "#888780",
+                  color: "var(--redo-text-secondary)",
                   margin: 0,
                   fontFamily: FONT,
                 }}
@@ -560,7 +560,7 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
               <span
                 style={{
                   fontSize: 13,
-                  color: "#B4B2A9",
+                  color: "var(--redo-text-tertiary)",
                   fontFamily: FONT,
                 }}
               >
