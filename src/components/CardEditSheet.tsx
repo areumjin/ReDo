@@ -5,7 +5,7 @@ import type { CardData } from "../types";
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
 
-const PROJECTS = ["브랜딩 과제", "졸업전시", "기타"];
+const PROJECTS = ["영감", "작업", "학습", "아이디어", "기타"];
 const KEYWORD_OPTIONS = ["타이포그래피", "미니멀", "아이덴티티", "전시", "공간", "조명", "컬러", "무드", "그리드", "브랜딩", "로고", "포스터"];
 
 type SheetPhase = "hidden" | "entering" | "visible" | "leaving";
@@ -231,7 +231,7 @@ export function CardEditSheet({ isOpen, card, onSave, onClose, existingProjects 
           {/* 프로젝트 태그 */}
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontSize: 11, fontWeight: 500, color: "#B4B2A9", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px", fontFamily: FONT }}>
-              프로젝트 태그
+              폴더
             </p>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {allProjects.map((proj) => {

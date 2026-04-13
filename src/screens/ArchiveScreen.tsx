@@ -169,12 +169,14 @@ function FilterChipsRow({
   sortOrder,
   onSortChange,
   chips,
+  folderColors,
 }: {
   activeFilters: string[];
   onToggle: (chip: string) => void;
   sortOrder: SortOrder;
   onSortChange: (order: SortOrder) => void;
   chips: string[];
+  folderColors?: Record<string, string>;
 }) {
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -201,6 +203,8 @@ function FilterChipsRow({
           {chips.map((chip) => {
             const isActive = activeFilters.includes(chip);
             const isStatusChip = chip === "미실행";
+            const isAllChip = chip === "전체";
+            const isProjectChip = !isStatusChip && !isAllChip;
             const bg = isActive
               ? isStatusChip ? "var(--redo-chip-status-bg)" : "var(--redo-brand-light)"
               : "var(--redo-bg-secondary)";
@@ -221,6 +225,13 @@ function FilterChipsRow({
                   whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4,
                   fontFamily: FONT, transition: "all 0.15s ease",
                 }}>
+                {isProjectChip && (
+                  <div style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: folderColors?.[chip] ?? "#6A70FF",
+                    flexShrink: 0,
+                  }} />
+                )}
                 {chip}
                 {isActive && chip !== "전체" && (
                   <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
@@ -322,12 +333,14 @@ function GridCard({
   showNewDot = false,
   newDotOpacity = 0,
   executedCardIds,
+  folderColors,
 }: {
   card: CardData;
   onTap?: () => void;
   showNewDot?: boolean;
   newDotOpacity?: number;
   executedCardIds?: Set<number>;
+  folderColors?: Record<string, string>;
 }) {
   const isDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
   const dotColor = isDone ? "var(--redo-success)" : "var(--redo-brand)";
@@ -378,7 +391,7 @@ function GridCard({
         {/* Project tag — top left */}
         <div style={{ position: "absolute", top: 6, left: 6 }}>
           <span style={{
-            background: "var(--redo-brand)", color: "#fff", fontSize: 9,
+            background: folderColors?.[card.projectTag] ?? "var(--redo-brand)", color: "#fff", fontSize: 9,
             fontWeight: "var(--font-weight-medium)", borderRadius: "var(--radius-chip)",
             padding: "2px 7px", lineHeight: 1.5, fontFamily: FONT, display: "inline-block",
           }}>
@@ -437,7 +450,7 @@ function GridCard({
 
 // ─── List Card ────────────────────────────────────────────────────────────────
 
-function ListCard({ card, onTap, executedCardIds }: { card: CardData; onTap?: () => void; executedCardIds?: Set<number> }) {
+function ListCard({ card, onTap, executedCardIds, folderColors }: { card: CardData; onTap?: () => void; executedCardIds?: Set<number>; folderColors?: Record<string, string> }) {
   const isDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
   const dotColor = isDone ? "var(--redo-success)" : "var(--redo-brand)";
 
@@ -479,9 +492,12 @@ function ListCard({ card, onTap, executedCardIds }: { card: CardData; onTap?: ()
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>{card.title}</p>
         <div className="flex items-center" style={{ gap: 6 }}>
-          <span style={{ fontSize: "var(--text-micro)", color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
-            {card.projectTag}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: folderColors?.[card.projectTag] ?? "#6A70FF" }} />
+            <span style={{ fontSize: "var(--text-micro)", color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
+              {card.projectTag}
+            </span>
+          </div>
           <span style={{ color: "var(--redo-text-tertiary)", fontSize: 9 }}>·</span>
           <span style={{ fontSize: "var(--text-micro)", color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
             {card.daysAgo}
@@ -503,6 +519,7 @@ interface ArchiveScreenProps {
   pendingStatus?: "saving" | "confirmed" | "failed" | null;
   executedCardIds?: Set<number>;
   cards?: CardData[];
+  folderColors?: Record<string, string>;
 }
 
 type EnterPhase = "start" | "entering" | "pulsing" | "stable";
@@ -517,6 +534,7 @@ export function ArchiveScreen({
   pendingStatus,
   executedCardIds,
   cards: cardsProp,
+  folderColors,
 }: ArchiveScreenProps) {
   const cardSource = cardsProp ?? ALL_CARDS;
   const projectTags = useMemo(() => Array.from(new Set(cardSource.map(c => c.projectTag))), [cardSource]);
@@ -693,9 +711,11 @@ export function ArchiveScreen({
 
     if (activeFilters.includes("전체") || activeFilters.length === 0) return matchesSearch;
 
+    // 폴더 필터: activeFilters 중 실제 projectTag인 것만 필터링
+    const projectFilters = activeFilters.filter((f) => f !== "전체" && f !== "미실행");
     const matchesProject =
-      activeFilters.includes(card.projectTag) ||
-      !activeFilters.some((f) => ["브랜딩 과제", "졸업전시", "기타"].includes(f));
+      projectFilters.length === 0 ||
+      projectFilters.includes(card.projectTag);
 
     const effectiveDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
     const matchesStatus =
@@ -776,6 +796,7 @@ export function ArchiveScreen({
           sortOrder={sortOrder}
           onSortChange={setSortOrder}
           chips={FILTER_CHIPS}
+          folderColors={folderColors}
         />
       </div>
 
@@ -841,6 +862,7 @@ export function ArchiveScreen({
                   showNewDot={newDotVisible}
                   newDotOpacity={newDotOpacity}
                   onTap={() => onCardTap?.(pendingAsCard)}
+                  folderColors={folderColors}
                 />
               </div>
             )}
@@ -848,7 +870,7 @@ export function ArchiveScreen({
             {/* Existing cards */}
             {sortedFiltered.map((card) => (
               <div key={card.id} style={existingStyle}>
-                <GridCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} />
+                <GridCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} folderColors={folderColors} />
               </div>
             ))}
           </div>
@@ -871,12 +893,12 @@ export function ArchiveScreen({
                   willChange: "transform, opacity",
                 }}
               >
-                <ListCard card={pendingAsCard} onTap={() => onCardTap?.(pendingAsCard)} />
+                <ListCard card={pendingAsCard} onTap={() => onCardTap?.(pendingAsCard)} folderColors={folderColors} />
               </div>
             )}
             {sortedFiltered.map((card) => (
               <div key={card.id} style={existingStyle}>
-                <ListCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} />
+                <ListCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} folderColors={folderColors} />
               </div>
             ))}
           </div>

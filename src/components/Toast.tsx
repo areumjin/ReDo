@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ToastConfig {
-  variant: "success" | "duplicate" | "error" | "later";
+  variant: "success" | "duplicate" | "error" | "later" | "info";
   sourceChip: string;
 }
 
@@ -29,11 +29,14 @@ function Toast({
   const isSuccess = config.variant === "success";
   const isError = config.variant === "error";
   const isLater = config.variant === "later";
+  const isInfo = config.variant === "info";
 
   const iconBg = isSuccess
     ? "var(--redo-success)"
     : isError
     ? "var(--redo-danger)"
+    : isInfo
+    ? "#3B82F6"
     : isLater
     ? "var(--redo-text-tertiary)"
     : "var(--redo-warning)";
@@ -114,6 +117,12 @@ function Toast({
                 strokeLinejoin="round"
               />
             </svg>
+          ) : isInfo ? (
+            /* Info "i" circle */
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+              <circle cx="5" cy="5" r="1" fill="white"/>
+              <path d="M5 4v3.5" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
           ) : isLater ? (
             /* Clock icon */
             <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
@@ -149,13 +158,15 @@ function Toast({
             ? "방금 저장됨"
             : isError
             ? "저장에 실패했어. 다시 시도해줘"
+            : isInfo
+            ? config.sourceChip
             : isLater
             ? "나중에 다시 볼게요"
             : "이미 저장된 레퍼런스야"}
         </span>
 
         {/* Source chip */}
-        {config.sourceChip && (
+        {config.sourceChip && !isInfo && (
           <span
             style={{
               fontSize: 11,

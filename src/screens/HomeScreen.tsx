@@ -2,12 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ALL_CARDS, type CardData } from "../types";
-import {
-  sortByRelevance,
-  buildContext,
-  getTopRelevant,
-  getRediscoverCards,
-} from "../lib/relevanceScore";
+import { sortByRelevance, buildContext } from "../lib/relevanceScore";
 
 // ─── Keyframe injection ───────────────────────────────────────────────────────
 
@@ -30,8 +25,10 @@ const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', 'Inter', system-ui, sans-serif";
 
 const PLACEHOLDER_BG: Record<string, string> = {
-  "브랜딩 과제": "#FFE8D6",
-  졸업전시: "#E8F4FD",
+  영감: "#FFE8D6",
+  작업: "#E8F4FD",
+  학습: "#EDF6ED",
+  아이디어: "#F0EEFE",
   기타: "#F1EFE8",
 };
 
@@ -67,59 +64,6 @@ function Dropdown({
   );
 }
 
-function DropdownDivider() {
-  return (
-    <div style={{ height: "0.5px", background: "rgba(0,0,0,0.08)", margin: "0 12px" }} />
-  );
-}
-
-function DropdownItem({
-  icon,
-  label,
-  color,
-  onClick,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  color?: string;
-  onClick?: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 14px",
-        background: hovered ? "rgba(0,0,0,0.03)" : "transparent",
-        border: "none",
-        cursor: "pointer",
-        textAlign: "left",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      {icon && (
-        <span style={{ flexShrink: 0, opacity: 0.6, display: "flex" }}>{icon}</span>
-      )}
-      <span
-        style={{
-          fontSize: 14,
-          fontWeight: 400,
-          color: color ?? "var(--redo-text-primary)",
-          fontFamily: FONT,
-          lineHeight: 1.3,
-        }}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
 
@@ -135,6 +79,9 @@ function TopBar({
   const [bellOpen, setBellOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // derive avatar initial from userName
+  const avatarInitial = userName ? userName.charAt(0).toUpperCase() : "?";
 
   useEffect(() => {
     if (!bellOpen) return;
@@ -279,674 +226,10 @@ function TopBar({
                 fontFamily: FONT,
               }}
             >
-              지
+              {avatarInitial}
             </span>
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Day Summary Banner ───────────────────────────────────────────────────────
-
-function DaySummaryBanner({
-  totalCount,
-  executedCount,
-}: {
-  totalCount: number;
-  executedCount: number;
-}) {
-  const unexecuted = totalCount - executedCount;
-  const pct = totalCount > 0 ? Math.round((executedCount / totalCount) * 100) : 0;
-
-  const size = 52;
-  const stroke = 4;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - pct / 100);
-
-  return (
-    <div
-      style={{
-        margin: "0 16px 12px",
-        borderRadius: 14,
-        background: "linear-gradient(135deg, #6A70FF 0%, #4B52E0 100%)",
-        padding: 16,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <div>
-        <p
-          style={{
-            fontSize: 12,
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.75)",
-            margin: 0,
-            marginBottom: 4,
-            fontFamily: FONT,
-            lineHeight: 1.3,
-          }}
-        >
-          미실행 {unexecuted}개 중
-        </p>
-        <p
-          style={{
-            fontSize: 28,
-            fontWeight: 500,
-            color: "#ffffff",
-            margin: 0,
-            lineHeight: 1.1,
-            fontFamily: FONT,
-          }}
-        >
-          {unexecuted}
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 400,
-              color: "rgba(255,255,255,0.75)",
-              marginLeft: 6,
-            }}
-          >
-            개 남음
-          </span>
-        </p>
-        <p
-          style={{
-            fontSize: 12,
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.65)",
-            margin: 0,
-            marginTop: 4,
-            fontFamily: FONT,
-          }}
-        >
-          오늘 실행할 레퍼런스
-        </p>
-      </div>
-
-      <div style={{ position: "relative", flexShrink: 0 }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle
-            cx={size / 2} cy={size / 2} r={r}
-            fill="none"
-            stroke="rgba(255,255,255,0.2)"
-            strokeWidth={stroke}
-          />
-          <circle
-            cx={size / 2} cy={size / 2} r={r}
-            fill="none"
-            stroke="rgba(255,255,255,0.9)"
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeDasharray={circ}
-            strokeDashoffset={offset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{ transition: "stroke-dashoffset 0.8s ease" }}
-          />
-        </svg>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: "#ffffff",
-              fontFamily: FONT,
-              lineHeight: 1,
-            }}
-          >
-            {pct}%
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── AI Strip ─────────────────────────────────────────────────────────────────
-
-function AIStrip({
-  expanded,
-  onToggle,
-  cards,
-  executedCardIds,
-}: {
-  expanded: boolean;
-  onToggle?: () => void;
-  cards: CardData[];
-  executedCardIds: Set<number>;
-}) {
-  const [pressed, setPressed] = useState(false);
-
-  const topProject = cards.length > 0
-    ? (() => {
-        const freq: Record<string, number> = {};
-        cards.filter(c => !executedCardIds.has(c.id) && c.statusDot !== "실행완료")
-             .forEach(c => { freq[c.projectTag] = (freq[c.projectTag] ?? 0) + 1; });
-        return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "전체";
-      })()
-    : "전체";
-  const relevantCount = getTopRelevant(cards, { projectTag: topProject }, executedCardIds, 10).length;
-  return (
-    <div
-      style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 0 }}
-    >
-      <div
-        className="flex items-center"
-        onClick={onToggle}
-        onPointerDown={() => setPressed(true)}
-        onPointerUp={() => setPressed(false)}
-        onPointerLeave={() => setPressed(false)}
-        style={{
-          background: "var(--redo-context-bg)",
-          borderRadius: expanded ? "12px 12px 0 0" : "var(--radius-card)",
-          padding: "10px 14px",
-          gap: 10,
-          cursor: "pointer",
-          transform: pressed ? "scale(0.98)" : "scale(1)",
-          transition: pressed ? "transform 60ms ease-in" : "transform 100ms ease-out",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            background: "var(--redo-brand)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"
-              fill="white"
-            />
-          </svg>
-        </div>
-
-        <div className="flex flex-col flex-1" style={{ gap: 2 }}>
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              color: "var(--redo-context-label)",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              margin: 0,
-              lineHeight: 1.3,
-              fontFamily: FONT,
-            }}
-          >
-            AI 추천
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 400,
-              color: "var(--redo-context-text)",
-              margin: 0,
-              lineHeight: 1.5,
-              fontFamily: FONT,
-            }}
-          >
-            {`${topProject}와 연관된 레퍼런스 ${relevantCount}개를 발견했어요`}
-          </p>
-        </div>
-
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          style={{
-            transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-            transition: "transform 200ms ease",
-            flexShrink: 0,
-          }}
-        >
-          <path
-            d="M9 18l6-6-6-6"
-            stroke="var(--redo-brand)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// ─── AI Expand Section ────────────────────────────────────────────────────────
-
-function AIExpandSection({
-  cards,
-  executedCardIds,
-  onCardTap,
-  onClose,
-  activeFilter,
-  recentlyViewedIds,
-}: {
-  cards: CardData[];
-  executedCardIds: Set<number>;
-  onCardTap: (card: CardData) => void;
-  onClose: () => void;
-  activeFilter?: string;
-  recentlyViewedIds?: number[];
-}) {
-  const context = buildContext(cards, activeFilter ?? "전체", recentlyViewedIds ?? []);
-  const topCards = getTopRelevant(cards, context, executedCardIds, 3);
-  // fallback if no relevant cards found
-  const displayCards = topCards.length > 0
-    ? topCards
-    : cards.filter((c) => !executedCardIds.has(c.id) && c.statusDot !== "실행완료").slice(0, 3);
-
-  return (
-    <div
-      style={{
-        marginLeft: 16,
-        marginRight: 16,
-        marginBottom: 12,
-        background: "var(--redo-context-bg)",
-        borderRadius: "0 0 12px 12px",
-        overflow: "hidden",
-        borderTop: "0.5px solid rgba(106,112,255,0.12)",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 14px 8px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: "#534AB7",
-            fontFamily: FONT,
-          }}
-        >
-          지금 실행하기 좋은 레퍼런스
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            fontSize: 12,
-            color: "#888780",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "2px 4px",
-            fontFamily: FONT,
-          }}
-        >
-          닫기
-        </button>
-      </div>
-
-      {/* Horizontal scroll cards */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingBottom: 14,
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}
-      >
-        {displayCards.map((card) => (
-          <div
-            key={card.id}
-            onClick={() => onCardTap(card)}
-            style={{
-              width: 160,
-              flexShrink: 0,
-              borderRadius: 10,
-              border: "1px solid rgba(106,112,255,0.18)",
-              overflow: "hidden",
-              cursor: "pointer",
-              background: "#fff",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            {/* Image */}
-            <div style={{ height: 80, overflow: "hidden" }}>
-              {card.image ? (
-                <img
-                  src={card.image}
-                  alt={card.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: PLACEHOLDER_BG[card.projectTag] ?? "#F1EFE8",
-                  }}
-                />
-              )}
-            </div>
-            {/* Title */}
-            <div style={{ padding: "8px 8px 6px" }}>
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: "var(--redo-text-primary)",
-                  margin: 0,
-                  marginBottom: 6,
-                  lineHeight: 1.4,
-                  fontFamily: FONT,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {card.title}
-              </p>
-              <button
-                onClick={(e) => { e.stopPropagation(); onCardTap(card); }}
-                style={{
-                  width: "100%",
-                  height: 28,
-                  borderRadius: 7,
-                  background: "var(--redo-brand)",
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: FONT,
-                }}
-              >
-                실행하기
-              </button>
-            </div>
-          </div>
-        ))}
-
-        {displayCards.length === 0 && (
-          <p style={{ fontSize: 13, color: "#888780", fontFamily: FONT, padding: "4px 0 8px" }}>
-            미실행 레퍼런스가 없어요 🎉
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Search Bar ──────────────────────────────────────────────────────────────
-
-function SearchBar({
-  value,
-  onChange,
-  onClear,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onClear: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  return (
-    <div
-      style={{
-        margin: "0 16px 10px",
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-      }}
-    >
-      {/* Search icon */}
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill="none"
-        style={{
-          position: "absolute",
-          left: 12,
-          pointerEvents: "none",
-          flexShrink: 0,
-        }}
-      >
-        <circle cx="11" cy="11" r="7" stroke="var(--redo-text-tertiary)" strokeWidth="2" />
-        <path d="M16.5 16.5L21 21" stroke="var(--redo-text-tertiary)" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="제목, 저장 이유, 키워드 검색"
-        style={{
-          width: "100%",
-          height: 38,
-          minHeight: 44,
-          paddingLeft: 36,
-          paddingRight: value ? 36 : 12,
-          fontSize: 13,
-          fontFamily: FONT,
-          color: "var(--redo-text-primary)",
-          background: "var(--redo-bg-secondary)",
-          border: "1px solid transparent",
-          borderRadius: 10,
-          outline: "none",
-          boxSizing: "border-box",
-          transition: "border-color 150ms ease",
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = "var(--redo-brand)";
-          e.currentTarget.style.background = "#fff";
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = "transparent";
-          e.currentTarget.style.background = "var(--redo-bg-secondary)";
-        }}
-      />
-
-      {/* Clear button */}
-      {value && (
-        <button
-          onClick={() => { onClear(); inputRef.current?.focus(); }}
-          style={{
-            position: "absolute",
-            right: 8,
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            background: "var(--redo-text-tertiary)",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── Rediscover Section ───────────────────────────────────────────────────────
-
-function RediscoverSection({
-  cards,
-  executedCardIds,
-  onCardTap,
-}: {
-  cards: CardData[];
-  executedCardIds: Set<number>;
-  onCardTap: (card: CardData) => void;
-}) {
-  const rediscoverCards = getRediscoverCards(cards, executedCardIds, 2);
-  if (rediscoverCards.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: 12 }}>
-      {/* Section header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          paddingLeft: 16,
-          paddingRight: 16,
-          marginBottom: 8,
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M1 4v6h6M23 20v-6h-6"
-            stroke="var(--redo-text-secondary)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"
-            stroke="var(--redo-text-secondary)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: "var(--redo-text-secondary)",
-            fontFamily: FONT,
-            letterSpacing: "0.03em",
-            textTransform: "uppercase",
-          }}
-        >
-          다시 꺼내볼 레퍼런스
-        </span>
-      </div>
-
-      {/* Horizontal scroll */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          paddingLeft: 16,
-          paddingRight: 16,
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}
-      >
-        {rediscoverCards.map((card) => (
-          <div
-            key={card.id}
-            onClick={() => onCardTap(card)}
-            style={{
-              width: 140,
-              flexShrink: 0,
-              borderRadius: 10,
-              overflow: "hidden",
-              border: "0.5px solid var(--redo-border)",
-              background: "var(--redo-bg-primary)",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            {/* Image */}
-            <div style={{ height: 88, position: "relative", overflow: "hidden" }}>
-              {card.image ? (
-                <img
-                  src={card.image}
-                  alt={card.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: PLACEHOLDER_BG[card.projectTag] ?? "#F1EFE8",
-                  }}
-                />
-              )}
-              {/* Age badge */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 5,
-                  left: 7,
-                  background: "rgba(0,0,0,0.5)",
-                  borderRadius: 20,
-                  padding: "2px 7px",
-                }}
-              >
-                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.9)", fontFamily: FONT }}>
-                  {card.daysAgo}
-                </span>
-              </div>
-            </div>
-            {/* Text */}
-            <div style={{ padding: "7px 8px 8px" }}>
-              <p
-                style={{
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: "var(--redo-text-secondary)",
-                  margin: 0,
-                  marginBottom: 2,
-                  fontFamily: FONT,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {card.projectTag}
-              </p>
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: "var(--redo-text-primary)",
-                  margin: 0,
-                  lineHeight: 1.35,
-                  fontFamily: FONT,
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {card.title}
-              </p>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -1116,46 +399,116 @@ function MoodboardCard({
 
       {/* Processing status badge */}
       <ProcessingBadge status={card.processingStatus} />
+    </div>
+  );
+}
 
-      {/* Context Box — 저장 이유 */}
-      {card.savedReason && (
-        <div
+// ─── Empty Moodboard (first-time user) ───────────────────────────────────────
+
+const GHOST_CARDS = [
+  { w: "100%", h: 160, br: "12px 12px 0 0" },
+  { w: "100%", h: 110, br: 12 },
+  { w: "100%", h: 130, br: 12 },
+  { w: "100%", h: 90,  br: 12 },
+  { w: "100%", h: 145, br: 12 },
+  { w: "100%", h: 100, br: 12 },
+];
+
+function EmptyMoodboard({ onFabPress }: { onFabPress?: () => void }) {
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Ghost grid */}
+      <div
+        style={{
+          columns: 2,
+          columnGap: 8,
+          padding: "0 12px",
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+      >
+        {GHOST_CARDS.map((g, i) => (
+          <div
+            key={i}
+            style={{
+              breakInside: "avoid",
+              marginBottom: 8,
+              borderRadius: g.br,
+              background: i % 3 === 0 ? "#EBEBEB" : i % 3 === 1 ? "#F0F0F0" : "#E8E8E8",
+              height: g.h,
+              width: g.w,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Frosted overlay with CTA */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(to bottom, rgba(var(--redo-bg-primary-rgb, 255,255,255), 0.2) 0%, rgba(var(--redo-bg-primary-rgb, 255,255,255), 0.85) 40%, var(--redo-bg-primary) 70%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingBottom: 32,
+          paddingLeft: 24,
+          paddingRight: 24,
+        }}
+      >
+        <p
           style={{
-            padding: "8px 10px",
-            background: "var(--redo-context-bg, #EEEFFE)",
+            fontSize: 17,
+            fontWeight: 600,
+            color: "var(--redo-text-primary)",
+            margin: 0,
+            marginBottom: 6,
+            textAlign: "center",
+            lineHeight: 1.4,
+            fontFamily: FONT,
           }}
         >
-          <p
+          첫 레퍼런스를 저장해봐요
+        </p>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 400,
+            color: "var(--redo-text-tertiary)",
+            margin: 0,
+            marginBottom: 20,
+            textAlign: "center",
+            lineHeight: 1.5,
+            fontFamily: FONT,
+          }}
+        >
+          링크나 이미지를 저장하면 여기에 모여요
+        </p>
+        {onFabPress && (
+          <button
+            onClick={onFabPress}
             style={{
-              fontSize: 10,
-              fontWeight: 500,
-              color: "var(--redo-context-label, #534AB7)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              marginBottom: 3,
+              height: 48,
+              minHeight: 48,
+              paddingLeft: 32,
+              paddingRight: 32,
+              borderRadius: 14,
+              background: "var(--redo-brand)",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
               fontFamily: FONT,
-              lineHeight: 1.2,
+              lineHeight: 1,
+              boxShadow: "0 4px 16px rgba(106,112,255,0.35)",
             }}
           >
-            저장 이유
-          </p>
-          <p
-            style={{
-              fontSize: 12,
-              color: "var(--redo-context-text, #3C3489)",
-              lineHeight: 1.45,
-              fontFamily: FONT,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              margin: 0,
-            }}
-          >
-            {card.savedReason}
-          </p>
-        </div>
-      )}
+            + 레퍼런스 저장하기
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1170,11 +523,13 @@ interface HomeScreenProps {
   onExecute?: (id: number) => void;
   laterCardIds?: Set<number>;
   onLater?: (id: number) => void;
-  onAIStripPress?: () => void;
   onProfilePress?: () => void;
   cards?: CardData[];
   userName?: string;
 }
+
+type SortMode = "최신순" | "오래된순" | "폴더별" | "미실행먼저";
+const SORT_OPTIONS: SortMode[] = ["최신순", "오래된순", "폴더별", "미실행먼저"];
 
 export function HomeScreen({
   onTabChange,
@@ -1185,13 +540,24 @@ export function HomeScreen({
   cards: cardsProp,
   userName,
 }: HomeScreenProps) {
-  const [aiExpanded, setAiExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState("전체");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("최신순");
+  const [sortOpen, setSortOpen] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
+  const sortRef = useRef<HTMLDivElement>(null);
 
   const cardSource = cardsProp ?? ALL_CARDS;
   const execSet = executedCardIds ?? new Set<number>();
+
+  // Close sort dropdown on outside click
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!sortRef.current?.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortOpen]);
 
   // Track recently viewed cards for relevance context
   const handleCardTap = useCallback((card: CardData) => {
@@ -1208,39 +574,33 @@ export function HomeScreen({
   ).length;
   const unexecutedCount = totalCount - executedCount;
 
-  // Project filter
+  // Folder filter chips
   const projectTags = Array.from(new Set(cardSource.map((c) => c.projectTag)));
   const filterChips = ["전체", ...projectTags];
 
-  // Search filter
-  const searchFiltered = searchQuery.trim().length > 0
-    ? cardSource.filter((c) => {
-        const q = searchQuery.toLowerCase();
-        return (
-          c.title.toLowerCase().includes(q) ||
-          c.savedReason.toLowerCase().includes(q) ||
-          c.projectTag.toLowerCase().includes(q) ||
-          c.chips.some((chip) => chip.toLowerCase().includes(q))
-        );
-      })
-    : cardSource;
-
   const filteredCards = activeFilter === "전체"
-    ? searchFiltered
-    : searchFiltered.filter((c) => c.projectTag === activeFilter);
+    ? cardSource
+    : cardSource.filter((c) => c.projectTag === activeFilter);
 
-  // Relevance-based sorting when a project filter is active or recent cards exist
-  const context = buildContext(cardSource, activeFilter, recentlyViewedIds);
-  const hasContext = activeFilter !== "전체" || recentlyViewedIds.length > 0;
-
-  const sortedCards = hasContext
-    ? sortByRelevance(filteredCards, context, execSet)
-    : [...filteredCards].sort((a, b) => {
-        const aExec = execSet.has(a.id) || a.statusDot === "실행완료";
-        const bExec = execSet.has(b.id) || b.statusDot === "실행완료";
-        if (aExec === bExec) return 0;
-        return aExec ? 1 : -1;
-      });
+  // Apply sort mode
+  const sortedCards = (() => {
+    const base = [...filteredCards];
+    switch (sortMode) {
+      case "최신순":
+        return base.sort((a, b) => b.id - a.id);
+      case "오래된순":
+        return base.sort((a, b) => a.id - b.id);
+      case "폴더별":
+        return base.sort((a, b) => {
+          const t = a.projectTag.localeCompare(b.projectTag, "ko");
+          return t !== 0 ? t : b.id - a.id;
+        });
+      case "미실행먼저": {
+        const ctx = buildContext(cardSource, activeFilter, recentlyViewedIds);
+        return sortByRelevance(base, ctx, execSet);
+      }
+    }
+  })();
 
   return (
     <div
@@ -1260,135 +620,149 @@ export function HomeScreen({
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "none", paddingBottom: 4 }}
       >
-        <div style={{ paddingTop: 12 }}>
-          <DaySummaryBanner totalCount={totalCount} executedCount={executedCount} />
-
-          {/* Processing status summary */}
-          {(() => {
-            const processedCount = cardSource.filter((c) => c.processingStatus === "processed").length;
-            const processingCount = cardSource.filter((c) => c.processingStatus === "processing").length;
-            if (processedCount === 0 && processingCount === 0) return null;
-            return (
-              <p
-                style={{
-                  fontSize: 12,
-                  color: "var(--redo-text-secondary)",
-                  fontFamily: FONT,
-                  margin: 0,
-                  padding: "0 12px 8px",
-                  lineHeight: 1.4,
-                }}
-              >
-                {processedCount > 0 && `${processedCount}개 소스 준비됨`}
-                {processedCount > 0 && processingCount > 0 && " · "}
-                {processingCount > 0 && `${processingCount}개 분석 중`}
-              </p>
-            );
-          })()}
-
-          {/* AI Strip */}
-          <div style={{ marginBottom: aiExpanded ? 0 : 12 }}>
-            <AIStrip
-              expanded={aiExpanded}
-              onToggle={() => setAiExpanded((v) => !v)}
-              cards={cardSource}
-              executedCardIds={execSet}
-            />
-          </div>
-
-          {/* AI Expand Section — slide down */}
-          <div
-            style={{
-              overflow: "hidden",
-              maxHeight: aiExpanded ? 200 : 0,
-              transition: "max-height 300ms ease",
-            }}
-          >
-            <AIExpandSection
-              cards={cardSource}
-              executedCardIds={execSet}
-              onCardTap={handleCardTap}
-              onClose={() => setAiExpanded(false)}
-              activeFilter={activeFilter}
-              recentlyViewedIds={recentlyViewedIds}
-            />
-          </div>
-        </div>
-
-        {/* Search bar */}
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          onClear={() => setSearchQuery("")}
-        />
-
-        {/* Rediscover section — only show when not searching and filter is "전체" */}
-        {!searchQuery && activeFilter === "전체" && (
-          <RediscoverSection
-            cards={cardSource}
-            executedCardIds={execSet}
-            onCardTap={handleCardTap}
-          />
-        )}
-
-        {/* Project filter chips */}
+        {/* Filter chips row + Sort button */}
         <div
           style={{
             display: "flex",
-            gap: 6,
-            padding: "0 12px 10px",
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            flexWrap: "nowrap",
+            alignItems: "center",
+            gap: 0,
+            padding: "10px 12px 10px",
           }}
         >
-          {filterChips.map((chip) => {
-            const isActive = activeFilter === chip;
-            return (
-              <button
-                key={chip}
-                onClick={() => setActiveFilter(chip)}
-                style={{
-                  height: 32,
-                  minHeight: 44,
-                  paddingLeft: 14,
-                  paddingRight: 14,
-                  borderRadius: 999,
-                  border: "none",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  fontFamily: FONT,
-                  background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
-                  color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
-                  transition: "all 150ms ease",
-                  display: "flex",
-                  alignItems: "center",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                {chip}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search result header */}
-        {searchQuery.trim().length > 0 && (
-          <p
+          {/* Scrollable filter chips */}
+          <div
             style={{
-              fontSize: 12,
-              color: "var(--redo-text-secondary)",
-              fontFamily: FONT,
-              margin: 0,
-              padding: "0 14px 8px",
-              lineHeight: 1.4,
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              flexWrap: "nowrap",
+              flex: 1,
+              minWidth: 0,
             }}
           >
-            "{searchQuery}" 검색 결과 {sortedCards.length}개
-          </p>
-        )}
+            {filterChips.map((chip) => {
+              const isActive = activeFilter === chip;
+              return (
+                <button
+                  key={chip}
+                  onClick={() => setActiveFilter(chip)}
+                  style={{
+                    height: 32,
+                    minHeight: 44,
+                    paddingLeft: 14,
+                    paddingRight: 14,
+                    borderRadius: 999,
+                    border: "none",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    fontSize: 13,
+                    fontWeight: isActive ? 600 : 400,
+                    fontFamily: FONT,
+                    background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
+                    color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
+                    transition: "all 150ms ease",
+                    display: "flex",
+                    alignItems: "center",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sort button */}
+          <div ref={sortRef} style={{ position: "relative", flexShrink: 0, marginLeft: 8 }}>
+            <button
+              onClick={() => setSortOpen((v) => !v)}
+              style={{
+                height: 32,
+                minHeight: 44,
+                paddingLeft: 10,
+                paddingRight: 10,
+                borderRadius: 10,
+                border: "none",
+                background: sortOpen ? "var(--redo-bg-secondary)" : "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                WebkitTapHighlightColor: "transparent",
+                transition: "background 150ms ease",
+              }}
+            >
+              {/* Sort icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M7 12h10M11 18h2" stroke={sortMode !== "최신순" ? "var(--redo-brand)" : "var(--redo-text-secondary)"} strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontFamily: FONT,
+                  color: sortMode !== "최신순" ? "var(--redo-brand)" : "var(--redo-text-secondary)",
+                  fontWeight: sortMode !== "최신순" ? 600 : 400,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {sortMode}
+              </span>
+            </button>
+
+            {/* Sort dropdown */}
+            {sortOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 40,
+                  right: 0,
+                  width: 130,
+                  background: "#fff",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)",
+                  border: "0.5px solid rgba(0,0,0,0.07)",
+                  zIndex: 300,
+                  overflow: "hidden",
+                  animation: "redo-fadein 0.12s ease",
+                }}
+              >
+                {SORT_OPTIONS.map((opt) => {
+                  const isActive = sortMode === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => { setSortMode(opt); setSortOpen(false); }}
+                      style={{
+                        width: "100%",
+                        height: 40,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0 14px",
+                        background: isActive ? "var(--redo-brand-light)" : "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontFamily: FONT,
+                        fontSize: 13,
+                        fontWeight: isActive ? 600 : 400,
+                        color: isActive ? "var(--redo-brand)" : "var(--redo-text-primary)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      {opt}
+                      {isActive && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="var(--redo-brand)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Moodboard grid or empty state */}
         {sortedCards.length > 0 ? (
@@ -1410,82 +784,7 @@ export function HomeScreen({
             ))}
           </div>
         ) : (
-          <div
-            className="flex flex-col items-center justify-center"
-            style={{ padding: "64px 32px", gap: 0 }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                background: "var(--redo-context-bg)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 16,
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"
-                  stroke="var(--redo-text-secondary)"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <p
-              style={{
-                fontSize: 15,
-                fontWeight: 500,
-                color: "var(--redo-text-secondary)",
-                margin: 0,
-                marginBottom: 6,
-                textAlign: "center",
-                lineHeight: 1.4,
-                fontFamily: FONT,
-              }}
-            >
-              저장한 레퍼런스가 없어요
-            </p>
-            <p
-              style={{
-                fontSize: 13,
-                fontWeight: 400,
-                color: "var(--redo-text-tertiary)",
-                margin: 0,
-                marginBottom: 20,
-                textAlign: "center",
-                lineHeight: 1.5,
-                fontFamily: FONT,
-              }}
-            >
-              FAB 버튼으로 첫 레퍼런스를 저장해봐요
-            </p>
-            {onFabPress && (
-              <button
-                onClick={onFabPress}
-                style={{
-                  height: 40,
-                  minHeight: 44,
-                  width: 140,
-                  borderRadius: 11,
-                  background: "var(--redo-brand)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: FONT,
-                  lineHeight: 1,
-                }}
-              >
-                저장하기
-              </button>
-            )}
-          </div>
+          <EmptyMoodboard onFabPress={onFabPress} />
         )}
       </div>
 

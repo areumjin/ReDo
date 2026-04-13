@@ -60,7 +60,7 @@ export async function extractColors(imageUrl: string): Promise<ExtractedColor[]>
         }
 
         const pixels = imageData.data;
-        const STEP = 32; // Quantization step (32 = ~8 buckets per channel)
+        const STEP = 20; // Quantization step (20 = better color precision)
         const buckets = new Map<string, number>();
         const totalPixels = SIZE * SIZE;
 
@@ -86,8 +86,23 @@ export async function extractColors(imageUrl: string): Promise<ExtractedColor[]>
           buckets.set(key, (buckets.get(key) ?? 0) + 1);
         }
 
-        // Sort by frequency descending
-        const sorted = Array.from(buckets.entries()).sort((a, b) => b[1] - a[1]);
+        // Sort by saturation-boosted frequency (vivid/saturated colors get up to 4x weight)
+        function getRGBSaturation(r: number, g: number, b: number): number {
+          const max = Math.max(r, g, b) / 255;
+          const min = Math.min(r, g, b) / 255;
+          return max === 0 ? 0 : (max - min) / max;
+        }
+
+        const sorted = Array.from(buckets.entries()).sort((a, b) => {
+          const [ar, ag, ab] = a[0].split(",").map(Number);
+          const [br, bg, bb] = b[0].split(",").map(Number);
+          const satA = getRGBSaturation(ar, ag, ab);
+          const satB = getRGBSaturation(br, bg, bb);
+          // Saturated colors get boosted weight (up to 4x for fully saturated)
+          const weightA = a[1] * (1 + satA * 3);
+          const weightB = b[1] * (1 + satB * 3);
+          return weightB - weightA;
+        });
 
         // Take top 5, compute percentage from total non-transparent pixels
         const nonTransparentCount = Array.from(buckets.values()).reduce(
@@ -96,7 +111,7 @@ export async function extractColors(imageUrl: string): Promise<ExtractedColor[]>
         );
         const denominator = nonTransparentCount || totalPixels;
 
-        const results: ExtractedColor[] = sorted.slice(0, 5).map(([key, count]) => {
+        const results: ExtractedColor[] = sorted.slice(0, 6).map(([key, count]) => {
           const [r, g, b] = key.split(",").map(Number) as [number, number, number];
           return {
             hex: rgbToHex(r, g, b),

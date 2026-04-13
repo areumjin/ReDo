@@ -4,8 +4,42 @@ import { fetchLinkMetadata, extractChipsFromMeta } from "../utils/fetchMetadata"
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
 
-const PROJECTS = ["브랜딩 과제", "졸업전시", "개인"];
-const AI_CHIPS = ["타이포 참고", "그리드 구조", "색상 팔레트", "분위기"];
+const PROJECTS = ["영감", "작업", "학습", "아이디어", "기타"];
+
+const FOLDER_PRESET_COLORS = [
+  "#6A70FF", // brand
+  "#22C55E", // green
+  "#F59E0B", // amber
+  "#EC4899", // pink
+  "#EF4444", // red
+  "#8B5CF6", // purple
+  "#06B6D4", // cyan
+  "#F97316", // orange
+];
+
+// 고정 태그 풀 — AI도 여기서만 추천, 사용자도 여기서만 선택
+const ALL_TAGS = [
+  "타이포그래피", "레이아웃", "컬러", "브랜딩", "로고",
+  "UI", "모션", "일러스트", "포스터", "아이덴티티",
+  "그리드", "미니멀", "패키징", "웹디자인", "영상",
+  "공간", "전시", "패턴", "사진", "폰트",
+];
+
+// AI가 반환한 키워드를 고정 태그 풀에 매핑
+function mapToAllTags(keywords: string[]): string[] {
+  const result: string[] = [];
+  for (const kw of keywords) {
+    const kwLower = kw.toLowerCase();
+    // 완전 일치 또는 부분 포함 매핑
+    const matched = ALL_TAGS.find(
+      (tag) => tag.toLowerCase() === kwLower ||
+               tag.toLowerCase().includes(kwLower) ||
+               kwLower.includes(tag.toLowerCase())
+    );
+    if (matched && !result.includes(matched)) result.push(matched);
+  }
+  return result;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -640,7 +674,8 @@ interface ProjectChipsRowProps {
   activeProject: string;
   newProject: string | null;
   onSelect: (proj: string) => void;
-  onAdd: (name: string) => void;
+  onAdd: (name: string, color: string) => void;
+  folderColors?: Record<string, string>;
 }
 
 function ProjectChipsRow({
@@ -649,9 +684,11 @@ function ProjectChipsRow({
   newProject,
   onSelect,
   onAdd,
+  folderColors,
 }: ProjectChipsRowProps) {
   const [adding, setAdding] = useState(false);
   const [inputVal, setInputVal] = useState("");
+  const [selectedColor, setSelectedColor] = useState(FOLDER_PRESET_COLORS[0]);
   const inputRef = useRef<HTMLInputElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -668,7 +705,7 @@ function ProjectChipsRow({
     setInputVal("");
     setAdding(false);
     if (name) {
-      onAdd(name);
+      onAdd(name, selectedColor);
       // Scroll to end to reveal new chip
       setTimeout(() => {
         if (rowRef.current) {
@@ -689,6 +726,7 @@ function ProjectChipsRow({
   };
 
   return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
     <div
       ref={rowRef}
       style={{
@@ -707,6 +745,7 @@ function ProjectChipsRow({
       {projects.map((proj) => {
         const isActive = activeProject === proj;
         const isNew = proj === newProject;
+        const chipColor = folderColors?.[proj] ?? "#6A70FF";
         return (
           <button
             key={proj}
@@ -734,6 +773,7 @@ function ProjectChipsRow({
               fontFamily: FONT,
               display: "flex",
               alignItems: "center",
+              gap: 5,
               flexShrink: 0,
               whiteSpace: "nowrap",
               transition: "all 0.15s ease",
@@ -742,6 +782,13 @@ function ProjectChipsRow({
               transformOrigin: "left center",
             }}
           >
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: chipColor,
+              flexShrink: 0,
+            }} />
             {proj}
           </button>
         );
@@ -779,7 +826,7 @@ function ProjectChipsRow({
                 if (document.activeElement !== inputRef.current) cancel();
               }, 150);
             }}
-            placeholder="프로젝트 이름"
+            placeholder="폴더 이름"
             maxLength={16}
             style={{
               flex: 1,
@@ -906,6 +953,34 @@ function ProjectChipsRow({
         </button>
       )}
     </div>
+    {adding && (
+      <div style={{ display: "flex", gap: 6, paddingLeft: 2, paddingBottom: 2 }}>
+        {FOLDER_PRESET_COLORS.map((color) => (
+          <button
+            key={color}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setSelectedColor(color)}
+            style={{
+              width: 22,
+              height: 22,
+              minWidth: 22,
+              minHeight: 22,
+              borderRadius: "50%",
+              background: color,
+              border: selectedColor === color
+                ? "2.5px solid var(--redo-text-primary)"
+                : "2.5px solid transparent",
+              cursor: "pointer",
+              padding: 0,
+              outline: "none",
+              boxSizing: "border-box",
+              transition: "border 0.12s ease",
+            }}
+          />
+        ))}
+      </div>
+    )}
+    </div>
   );
 }
 
@@ -934,6 +1009,8 @@ interface SaveBottomSheetProps {
   initialUrl?: string;
   initialTitle?: string;
   existingProjects?: string[];
+  folderColors?: Record<string, string>;
+  onFolderColorChange?: (name: string, color: string) => void;
 }
 
 export function SaveBottomSheet({
@@ -944,6 +1021,8 @@ export function SaveBottomSheet({
   initialUrl,
   initialTitle,
   existingProjects,
+  folderColors,
+  onFolderColorChange,
 }: SaveBottomSheetProps) {
   const [phase, setPhase] = useState<
     "hidden" | "entering" | "visible" | "leaving"
@@ -963,9 +1042,11 @@ export function SaveBottomSheet({
     return base;
   }, [existingProjects]);
 
-  const [activeProject, setActiveProject] = useState("브랜딩 과제");
+  const [activeProject, setActiveProject] = useState("영감");
   const [projects, setProjects] = useState<string[]>(allProjects);
-  const [selectedChips, setSelectedChips] = useState<string[]>(["타이포 참고"]);
+  const [selectedChips, setSelectedChips] = useState<string[]>([]);
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]); // AI 추천 이유 다중선택
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);           // 태그 추가 피커
   const [memoValue, setMemoValue] = useState("");
   const [newProject, setNewProject] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -1007,9 +1088,11 @@ export function SaveBottomSheet({
       setUrlValue(startUrl);
       setFetchState("idle");
       setMeta(null);
-      setActiveProject("브랜딩 과제");
+      setActiveProject("영감");
       setProjects([...allProjects]);
-      setSelectedChips(["타이포 참고"]);
+      setSelectedChips([]);
+      setSelectedReasons([]);
+      setTagPickerOpen(false);
       setMemoValue(initialTitle ?? "");
       setNewProject(null);
       setSaved(false);
@@ -1055,11 +1138,12 @@ export function SaveBottomSheet({
         if (data.analysis) {
           setAiAnalysis(data.analysis as AIAnalysis);
 
-          // Auto-fill keywords chips
+          // Auto-fill keyword chips — map AI keywords to fixed ALL_TAGS pool
           const aiKeywords: string[] = data.analysis.keywords ?? [];
-          if (aiKeywords.length > 0) {
+          const mappedTags = mapToAllTags(aiKeywords);
+          if (mappedTags.length > 0) {
             setSelectedChips((prev) => {
-              const merged = [...new Set([...prev, ...aiKeywords])];
+              const merged = [...new Set([...prev, ...mappedTags])];
               return merged.slice(0, 6);
             });
           }
@@ -1102,8 +1186,9 @@ export function SaveBottomSheet({
         setMemoValue(linkMeta.description.slice(0, 120));
       }
 
-      // Auto-fill AI chips from meta keywords
-      const autoChips = extractChipsFromMeta(linkMeta);
+      // Auto-fill tags from meta keywords (mapped to fixed ALL_TAGS pool)
+      const rawChips = extractChipsFromMeta(linkMeta);
+      const autoChips = mapToAllTags(rawChips);
       if (autoChips.length > 0) {
         setSelectedChips((prev) => {
           const merged = [...new Set([...prev, ...autoChips])];
@@ -1194,7 +1279,7 @@ export function SaveBottomSheet({
     setTimeout(() => {
       onSave?.({
         title: meta?.title ?? (urlValue ? extractDomain(urlValue) : "새 레퍼런스"),
-        savedReason: memoValue,
+        savedReason: [...selectedReasons, memoValue].filter(Boolean).join(" · "),
         imageUrl: finalImageUrl,
         url: urlValue,
         projectTag: activeProject,
@@ -1483,135 +1568,188 @@ export function SaveBottomSheet({
 
           {/* ── Section 2: Project ── */}
           <div style={{ marginBottom: 20 }}>
-            <SectionLabel>프로젝트</SectionLabel>
+            <SectionLabel>폴더</SectionLabel>
 
             <ProjectChipsRow
               projects={projects}
               activeProject={activeProject}
               newProject={newProject}
               onSelect={setActiveProject}
-              onAdd={(name) => {
+              onAdd={(name, color) => {
                 setProjects((prev) => [...prev, name]);
                 setActiveProject(name);
                 // Clear the "new" marker after animation completes
                 setNewProject(name);
                 setTimeout(() => setNewProject(null), 300);
+                onFolderColorChange?.(name, color);
               }}
+              folderColors={folderColors}
             />
           </div>
 
-          {/* ── Section 3: 저장 이유 ── */}
-          <div style={{ marginBottom: 4 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                marginBottom: 8,
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
-                  fill="var(--redo-context-label)"
-                />
-              </svg>
-              <p
-                style={{
-                  fontSize: "var(--text-context-label)",
-                  fontWeight: "var(--font-weight-medium)",
-                  color: "var(--redo-context-label)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  margin: 0,
-                  lineHeight: 1.3,
-                  fontFamily: FONT,
-                }}
-              >
-                왜 저장했어?
-              </p>
+          {/* ── Section 3: 태그 (AI 자동선택 + 수동 추가) ── */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <SectionLabel style={{ marginBottom: 0 }}>태그</SectionLabel>
+              {aiState === "loading" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {[0,1,2].map(i => (
+                    <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--redo-brand)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
+                  ))}
+                  <span style={{ fontSize: 10, color: "var(--redo-brand)", fontFamily: FONT }}>AI 분석 중</span>
+                </div>
+              )}
             </div>
 
-            {/* ── AI Analysis: loading indicator ── */}
-            {aiState === "loading" && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginBottom: 10,
-                  animation: "redo-fadein 0.2s ease",
-                }}
-              >
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "var(--redo-brand)",
-                      display: "inline-block",
-                      animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
-                    }}
-                  />
-                ))}
-                <span
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              {/* AI가 선택한 태그 (× 로 제거 가능) */}
+              {selectedChips.map((tag) => (
+                <div
+                  key={tag}
                   style={{
+                    height: 30,
+                    paddingLeft: 10,
+                    paddingRight: 6,
+                    borderRadius: "var(--radius-chip)",
                     fontSize: "var(--text-micro)",
-                    color: "var(--redo-brand)",
+                    fontWeight: "var(--font-weight-medium)",
+                    color: "var(--redo-context-text)",
+                    background: "var(--redo-brand-light)",
+                    border: "0.5px solid var(--redo-brand-mid)",
                     fontFamily: FONT,
-                    fontWeight: "var(--font-weight-regular)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  AI가 분석 중...
-                </span>
+                  {tag}
+                  <button
+                    onClick={() => setSelectedChips((prev) => prev.filter((c) => c !== tag))}
+                    style={{ width: 16, height: 16, borderRadius: "50%", background: "rgba(83,74,183,0.12)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
+                  >
+                    <svg width="7" height="7" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 2l8 8M10 2l-8 8" stroke="var(--redo-context-label)" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+
+              {/* + 태그 추가 버튼 */}
+              <button
+                onClick={() => setTagPickerOpen((v) => !v)}
+                style={{
+                  height: 30,
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                  borderRadius: "var(--radius-chip)",
+                  fontSize: "var(--text-micro)",
+                  fontWeight: "var(--font-weight-medium)",
+                  color: tagPickerOpen ? "var(--redo-brand)" : "var(--redo-text-tertiary)",
+                  background: "transparent",
+                  border: `1px dashed ${tagPickerOpen ? "var(--redo-brand)" : "var(--redo-border)"}`,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  transition: "all 0.15s ease",
+                  minHeight: 44,
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                태그 추가
+              </button>
+            </div>
+
+            {/* 태그 피커 — 선택되지 않은 태그만 표시 */}
+            {tagPickerOpen && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  background: "var(--redo-bg-secondary)",
+                  borderRadius: 10,
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  animation: "redo-fadein 0.15s ease",
+                }}
+              >
+                {ALL_TAGS.filter((t) => !selectedChips.includes(t)).map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      setSelectedChips((prev) => [...prev, tag]);
+                      // 전부 선택하면 피커 닫기
+                      if (ALL_TAGS.filter(t => !selectedChips.includes(t)).length <= 1) setTagPickerOpen(false);
+                    }}
+                    style={{
+                      height: 28,
+                      paddingLeft: 10,
+                      paddingRight: 10,
+                      borderRadius: "var(--radius-chip)",
+                      fontSize: "var(--text-micro)",
+                      color: "var(--redo-text-secondary)",
+                      background: "#fff",
+                      border: "0.5px solid var(--redo-border)",
+                      cursor: "pointer",
+                      fontFamily: FONT,
+                      display: "flex",
+                      alignItems: "center",
+                      transition: "all 0.12s ease",
+                      minHeight: 40,
+                    }}
+                  >
+                    {tag}
+                  </button>
+                ))}
+                {ALL_TAGS.filter((t) => !selectedChips.includes(t)).length === 0 && (
+                  <p style={{ fontSize: 12, color: "var(--redo-text-tertiary)", fontFamily: FONT, margin: 0 }}>모든 태그가 선택됐어요 ✓</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Section 4: 저장이유 ── */}
+          <div style={{ marginBottom: 4 }}>
+            <SectionLabel>저장이유</SectionLabel>
+
+            {/* AI loading dots */}
+            {aiState === "loading" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, animation: "redo-fadein 0.2s ease" }}>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--redo-brand)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
+                ))}
+                <span style={{ fontSize: "var(--text-micro)", color: "var(--redo-brand)", fontFamily: FONT }}>AI가 분석 중...</span>
               </div>
             )}
 
-            {/* ── AI Analysis: suggested reasons ── */}
+            {/* AI 추천 이유 — 중복 선택 가능 */}
             {aiState === "done" && aiAnalysis && aiAnalysis.suggested_reasons.length > 0 && (
-              <div
-                style={{
-                  marginBottom: 10,
-                  animation: "redo-fadein 0.22s ease",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 9,
-                    fontWeight: "var(--font-weight-medium)",
-                    color: "var(--redo-brand)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    margin: 0,
-                    marginBottom: 6,
-                    fontFamily: FONT,
-                    opacity: 0.7,
-                  }}
-                >
-                  AI 추천 이유
-                </p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {aiAnalysis.suggested_reasons.map((reason) => (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, animation: "redo-fadein 0.22s ease" }}>
+                {aiAnalysis.suggested_reasons.map((reason) => {
+                  const isSelected = selectedReasons.includes(reason);
+                  return (
                     <button
                       key={reason}
-                      onClick={() => {
-                        setMemoValue((prev) =>
-                          prev ? `${prev} ${reason}` : reason
-                        );
-                      }}
+                      onClick={() =>
+                        setSelectedReasons((prev) =>
+                          isSelected ? prev.filter((r) => r !== reason) : [...prev, reason]
+                        )
+                      }
                       style={{
-                        height: 28,
-                        minHeight: 40,
+                        height: 32,
+                        minHeight: 44,
                         paddingLeft: 10,
                         paddingRight: 10,
                         borderRadius: "var(--radius-chip)",
                         fontSize: "var(--text-micro)",
-                        fontWeight: "var(--font-weight-regular)",
-                        color: "var(--redo-brand)",
-                        background: "var(--redo-brand-light)",
-                        border: "0.5px solid var(--redo-brand-mid)",
+                        fontWeight: isSelected ? "var(--font-weight-medium)" : "var(--font-weight-regular)",
+                        color: isSelected ? "var(--redo-context-text)" : "var(--redo-text-secondary)",
+                        background: isSelected ? "var(--redo-brand-light)" : "var(--redo-bg-secondary)",
+                        border: isSelected ? "0.5px solid var(--redo-brand-mid)" : "0.5px solid transparent",
                         cursor: "pointer",
                         fontFamily: FONT,
                         display: "flex",
@@ -1619,119 +1757,53 @@ export function SaveBottomSheet({
                         gap: 4,
                         transition: "all 0.15s ease",
                         flexShrink: 0,
+                        textAlign: "left",
                       }}
                     >
-                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
-                        <path
-                          d="M6 1l1.4 3.6H11l-2.8 2.1 1 3.4L6 8.2 2.8 10l1-3.4L1 4.6h3.6z"
-                          fill="var(--redo-brand)"
-                          opacity="0.8"
-                        />
-                      </svg>
+                      {isSelected && (
+                        <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="var(--redo-context-label)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
                       {reason}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* AI suggestion chips */}
-            <div
+            {/* Freeform text input */}
+            <input
+              type="text"
+              value={memoValue}
+              onChange={(e) => setMemoValue(e.target.value)}
+              placeholder="직접 입력... (선택)"
               style={{
-                display: "flex",
-                gap: 6,
-                flexWrap: "wrap",
-                marginBottom: 10,
+                width: "100%",
+                height: 40,
+                minHeight: 44,
+                paddingLeft: 12,
+                paddingRight: 12,
+                borderRadius: 10,
+                border: "0.5px solid var(--redo-border)",
+                background: "var(--redo-bg-secondary)",
+                fontSize: "var(--text-caption)",
+                color: "var(--redo-text-primary)",
+                fontFamily: FONT,
+                outline: "none",
+                boxSizing: "border-box",
+                transition: "border-color 0.15s ease",
               }}
-            >
-              {AI_CHIPS.map((chip) => {
-                const isSelected = selectedChips.includes(chip);
-                return (
-                  <button
-                    key={chip}
-                    onClick={() => toggleChip(chip)}
-                    style={{
-                      height: 30,
-                      minHeight: 44,
-                      paddingLeft: 11,
-                      paddingRight: 11,
-                      borderRadius: "var(--radius-chip)",
-                      fontSize: "var(--text-micro)",
-                      fontWeight: isSelected
-                        ? "var(--font-weight-medium)"
-                        : "var(--font-weight-regular)",
-                      color: isSelected
-                        ? "var(--redo-context-text)"
-                        : "var(--redo-text-secondary)",
-                      background: isSelected
-                        ? "var(--redo-brand-light)"
-                        : "var(--redo-bg-secondary)",
-                      border: isSelected
-                        ? "0.5px solid var(--redo-brand-mid)"
-                        : "0.5px solid transparent",
-                      cursor: "pointer",
-                      fontFamily: FONT,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {isSelected && (
-                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                        <path
-                          d="M2 6l3 3 5-5"
-                          stroke="var(--redo-context-label)"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                    {chip}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Freeform memo */}
-            <div
-              style={{
-                background: "var(--redo-context-bg)",
-                borderRadius: "var(--radius-context)",
-                border: "0.5px solid rgba(106,112,255,0.18)",
-                padding: "10px 12px",
-                marginBottom: 7,
-              }}
-            >
-              <textarea
-                value={memoValue}
-                onChange={(e) => setMemoValue(e.target.value)}
-                placeholder="직접 입력..."
-                rows={2}
-                style={{
-                  width: "100%",
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  resize: "none",
-                  fontSize: "var(--text-caption)",
-                  fontWeight: "var(--font-weight-regular)",
-                  color: "var(--redo-context-text)",
-                  fontFamily: FONT,
-                  lineHeight: 1.6,
-                  display: "block",
-                }}
-              />
-            </div>
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(106,112,255,0.4)"; e.currentTarget.style.background = "#fff"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--redo-border)"; e.currentTarget.style.background = "var(--redo-bg-secondary)"; }}
+            />
 
             <p
               style={{
                 fontSize: "var(--text-micro)",
-                fontWeight: "var(--font-weight-regular)",
                 fontStyle: "italic",
                 color: "var(--redo-text-tertiary)",
-                margin: 0,
+                margin: "6px 0 0",
                 lineHeight: 1.5,
                 fontFamily: FONT,
               }}
