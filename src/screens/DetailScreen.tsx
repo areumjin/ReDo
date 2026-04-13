@@ -352,7 +352,7 @@ export function DetailScreen({
         ref={miniHeaderRef}
         style={{
           position: "absolute",
-          top: 44, // below status bar (StatusBar height ≈ 44px)
+          top: 0, // StatusBar 제거됨
           left: 0,
           right: 0,
           height: 44,
