@@ -295,11 +295,11 @@ export default function App() {
       })()
     : null;
 
-  // ── Existing project tags from current cards ──────────────────────────────
-  const existingProjects = Array.from(new Set(cards.map((c) => c.projectTag)));
-
   // Cards state — mutable copy of ALL_CARDS for in-session edits
   const [cards, setCards] = useState<CardData[]>([...ALL_CARDS]);
+
+  // ── Existing project tags from current cards ──────────────────────────────
+  const existingProjects = Array.from(new Set(cards.map((c) => c.projectTag)));
 
   const handleEditCard = useCallback((id: number, updated: Partial<CardData>) => {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
