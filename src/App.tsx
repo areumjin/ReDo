@@ -124,6 +124,7 @@ export default function App() {
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
   const [onboardingKey, setOnboardingKey] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   // ── Cards loading state ───────────────────────────────────────────────────
   const [cardsLoading, setCardsLoading] = useState(false);
@@ -156,6 +157,7 @@ export default function App() {
         clearTimeout(timeout);
         if (user) {
           setCurrentUserId(user.id);
+          setCurrentUserEmail(user.email ?? null);
           if (forceOnboarding || !isAlreadyOnboarded) {
             goToScreen("onboarding");
           } else {
@@ -176,8 +178,10 @@ export default function App() {
     const unsubscribe = onAuthStateChange((user) => {
       if (user) {
         setCurrentUserId(user.id);
+        setCurrentUserEmail(user.email ?? null);
       } else {
         setCurrentUserId(null);
+        setCurrentUserEmail(null);
       }
     });
 
@@ -277,9 +281,22 @@ export default function App() {
   const handleSignOut = async () => {
     await signOut();
     setCurrentUserId(null);
+    setCurrentUserEmail(null);
     setCards([...ALL_CARDS]);
     setAppScreen("login");
   };
+
+  // ── Derive display name from email ────────────────────────────────────────
+  const userName = currentUserEmail
+    ? (() => {
+        const prefix = currentUserEmail.split("@")[0];
+        // Capitalize first letter, replace dots/underscores with space
+        return prefix.replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+      })()
+    : null;
+
+  // ── Existing project tags from current cards ──────────────────────────────
+  const existingProjects = Array.from(new Set(cards.map((c) => c.projectTag)));
 
   // Cards state — mutable copy of ALL_CARDS for in-session edits
   const [cards, setCards] = useState<CardData[]>([...ALL_CARDS]);
@@ -622,6 +639,7 @@ export default function App() {
                     onAIStripPress={() => setAiRecommendVisible(true)}
                     onProfilePress={() => setSettingsVisible(true)}
                     cards={cards}
+                    userName={userName ?? undefined}
                   />
                 </>
               )}
@@ -652,6 +670,7 @@ export default function App() {
                   onTabChange={handleTabChange}
                   onFabPress={() => setSheetOpen(true)}
                   onCardTap={handleOpenDetail}
+                  userName={userName ?? undefined}
                 />
               )}
             </div>
@@ -700,6 +719,7 @@ export default function App() {
                 onBack={() => setSettingsVisible(false)}
                 onSignOut={handleSignOut}
                 currentUserId={currentUserId}
+                userName={userName ?? undefined}
               />
             </div>
 
@@ -744,6 +764,7 @@ export default function App() {
               onOptimisticSave={handleOptimisticSave}
               initialUrl={sheetInitialUrl}
               initialTitle={sheetInitialTitle}
+              existingProjects={existingProjects}
             />
 
             {/* Execution memo sheet */}
@@ -763,6 +784,7 @@ export default function App() {
                 if (editTargetCard) handleEditCard(editTargetCard.id, updated);
               }}
               onClose={() => setEditSheetOpen(false)}
+              existingProjects={existingProjects}
             />
           </>
         )}

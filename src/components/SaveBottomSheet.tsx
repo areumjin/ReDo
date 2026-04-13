@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { fetchLinkMetadata, extractChipsFromMeta } from "../utils/fetchMetadata";
 
 const FONT =
@@ -933,6 +933,7 @@ interface SaveBottomSheetProps {
   }) => void;
   initialUrl?: string;
   initialTitle?: string;
+  existingProjects?: string[];
 }
 
 export function SaveBottomSheet({
@@ -942,6 +943,7 @@ export function SaveBottomSheet({
   onOptimisticSave,
   initialUrl,
   initialTitle,
+  existingProjects,
 }: SaveBottomSheetProps) {
   const [phase, setPhase] = useState<
     "hidden" | "entering" | "visible" | "leaving"
@@ -951,8 +953,18 @@ export function SaveBottomSheet({
   const [fetchState, setFetchState] = useState<FetchState>("idle");
   const [meta, setMeta] = useState<OGMeta | null>(null);
 
+  const allProjects = useMemo(() => {
+    const base = [...PROJECTS];
+    if (existingProjects) {
+      for (const p of existingProjects) {
+        if (!base.includes(p)) base.push(p);
+      }
+    }
+    return base;
+  }, [existingProjects]);
+
   const [activeProject, setActiveProject] = useState("브랜딩 과제");
-  const [projects, setProjects] = useState<string[]>([...PROJECTS]);
+  const [projects, setProjects] = useState<string[]>(allProjects);
   const [selectedChips, setSelectedChips] = useState<string[]>(["타이포 참고"]);
   const [memoValue, setMemoValue] = useState("");
   const [newProject, setNewProject] = useState<string | null>(null);
@@ -996,7 +1008,7 @@ export function SaveBottomSheet({
       setFetchState("idle");
       setMeta(null);
       setActiveProject("브랜딩 과제");
-      setProjects([...PROJECTS]);
+      setProjects([...allProjects]);
       setSelectedChips(["타이포 참고"]);
       setMemoValue(initialTitle ?? "");
       setNewProject(null);

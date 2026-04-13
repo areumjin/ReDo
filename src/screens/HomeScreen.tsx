@@ -126,9 +126,11 @@ function DropdownItem({
 function TopBar({
   unexecutedCount,
   onProfilePress,
+  userName,
 }: {
   unexecutedCount: number;
   onProfilePress?: () => void;
+  userName?: string;
 }) {
   const [bellOpen, setBellOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
@@ -172,7 +174,7 @@ function TopBar({
             fontFamily: FONT,
           }}
         >
-          안녕, 지원 👋
+          {`안녕, ${userName ?? "게스트"} 👋`}
         </p>
       </div>
 
@@ -417,11 +419,25 @@ function DaySummaryBanner({
 function AIStrip({
   expanded,
   onToggle,
+  cards,
+  executedCardIds,
 }: {
   expanded: boolean;
   onToggle?: () => void;
+  cards: CardData[];
+  executedCardIds: Set<number>;
 }) {
   const [pressed, setPressed] = useState(false);
+
+  const topProject = cards.length > 0
+    ? (() => {
+        const freq: Record<string, number> = {};
+        cards.filter(c => !executedCardIds.has(c.id) && c.statusDot !== "실행완료")
+             .forEach(c => { freq[c.projectTag] = (freq[c.projectTag] ?? 0) + 1; });
+        return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "전체";
+      })()
+    : "전체";
+  const relevantCount = getTopRelevant(cards, { projectTag: topProject }, executedCardIds, 10).length;
   return (
     <div
       style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 0 }}
@@ -488,7 +504,7 @@ function AIStrip({
               fontFamily: FONT,
             }}
           >
-            브랜딩 과제와 연관된 레퍼런스 3개를 발견했어요
+            {`${topProject}와 연관된 레퍼런스 ${relevantCount}개를 발견했어요`}
           </p>
         </div>
 
@@ -1157,6 +1173,7 @@ interface HomeScreenProps {
   onAIStripPress?: () => void;
   onProfilePress?: () => void;
   cards?: CardData[];
+  userName?: string;
 }
 
 export function HomeScreen({
@@ -1166,6 +1183,7 @@ export function HomeScreen({
   executedCardIds,
   onProfilePress,
   cards: cardsProp,
+  userName,
 }: HomeScreenProps) {
   const [aiExpanded, setAiExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState("전체");
@@ -1228,14 +1246,14 @@ export function HomeScreen({
     <div
       className="flex flex-col relative overflow-hidden"
       style={{
-        width: 375,
-        height: 812,
+        width: "100%",
+        height: "100%",
         background: "var(--redo-bg-primary)",
         fontFamily: FONT,
       }}
     >
       <StatusBar />
-      <TopBar unexecutedCount={unexecutedCount} onProfilePress={onProfilePress} />
+      <TopBar unexecutedCount={unexecutedCount} onProfilePress={onProfilePress} userName={userName} />
 
       {/* Scrollable content */}
       <div
@@ -1273,6 +1291,8 @@ export function HomeScreen({
             <AIStrip
               expanded={aiExpanded}
               onToggle={() => setAiExpanded((v) => !v)}
+              cards={cardSource}
+              executedCardIds={execSet}
             />
           </div>
 

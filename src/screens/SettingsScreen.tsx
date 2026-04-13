@@ -176,20 +176,23 @@ interface SettingsScreenProps {
   onBack: () => void;
   onSignOut?: () => void;
   currentUserId?: string | null;
+  userName?: string;
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, currentUserId }: SettingsScreenProps) {
+export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, currentUserId, userName }: SettingsScreenProps) {
   const [notifOn, setNotifOn] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
   // Profile state
-  const [name, setName] = useState("지원");
+  const [name, setName] = useState(userName ?? "게스트");
   const [job, setJob] = useState("디자이너");
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(name);
   const [editJob, setEditJob] = useState(job);
+
+  useEffect(() => { setName(userName ?? "게스트"); }, [userName]);
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -238,8 +241,8 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
   return (
     <div
       style={{
-        width: 375,
-        height: 812,
+        width: "100%",
+        height: "100%",
         background: "var(--redo-bg-secondary)",
         fontFamily: FONT,
         overflow: "hidden",

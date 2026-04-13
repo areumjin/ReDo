@@ -762,8 +762,8 @@ export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCard
     <div
       className="flex flex-col relative"
       style={{
-        width: 375,
-        height: 812,
+        width: "100%",
+        height: "100%",
         background: "var(--redo-bg-secondary)",
         fontFamily: FONT,
         overflow: "hidden",

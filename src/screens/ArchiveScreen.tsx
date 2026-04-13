@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ImageWithFallback } from "../components/ImageWithFallback";
@@ -36,7 +36,7 @@ export interface PendingCardData {
   title: string;
 }
 
-const FILTER_CHIPS = ["전체", "브랜딩 과제", "졸업전시", "미실행"];
+// FILTER_CHIPS is now computed dynamically inside the component from card data
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
 
@@ -168,11 +168,13 @@ function FilterChipsRow({
   onToggle,
   sortOrder,
   onSortChange,
+  chips,
 }: {
   activeFilters: string[];
   onToggle: (chip: string) => void;
   sortOrder: SortOrder;
   onSortChange: (order: SortOrder) => void;
+  chips: string[];
 }) {
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -196,7 +198,7 @@ function FilterChipsRow({
       }}>
       <div className="flex-1 overflow-x-auto" style={{ scrollbarWidth: "none", minWidth: 0 }}>
         <div className="flex items-center" style={{ gap: 6, width: "max-content" }}>
-          {FILTER_CHIPS.map((chip) => {
+          {chips.map((chip) => {
             const isActive = activeFilters.includes(chip);
             const isStatusChip = chip === "미실행";
             const bg = isActive
@@ -517,6 +519,8 @@ export function ArchiveScreen({
   cards: cardsProp,
 }: ArchiveScreenProps) {
   const cardSource = cardsProp ?? ALL_CARDS;
+  const projectTags = useMemo(() => Array.from(new Set(cardSource.map(c => c.projectTag))), [cardSource]);
+  const FILTER_CHIPS = useMemo(() => ["전체", ...projectTags, "미실행"], [projectTags]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -752,7 +756,7 @@ export function ArchiveScreen({
     <div
       className="flex flex-col relative"
       style={{
-        width: 375, height: 812,
+        width: "100%", height: "100%",
         background: "var(--redo-bg-secondary)",
         fontFamily: FONT,
         overflow: "hidden",
@@ -771,6 +775,7 @@ export function ArchiveScreen({
           onToggle={toggleFilter}
           sortOrder={sortOrder}
           onSortChange={setSortOrder}
+          chips={FILTER_CHIPS}
         />
       </div>
 

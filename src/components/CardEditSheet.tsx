@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ImageWithFallback } from "./ImageWithFallback";
 import type { CardData } from "../types";
 
@@ -15,9 +15,19 @@ interface CardEditSheetProps {
   card: CardData | null;
   onSave: (updated: Partial<CardData>) => void;
   onClose: () => void;
+  existingProjects?: string[];
 }
 
-export function CardEditSheet({ isOpen, card, onSave, onClose }: CardEditSheetProps) {
+export function CardEditSheet({ isOpen, card, onSave, onClose, existingProjects }: CardEditSheetProps) {
+  const allProjects = useMemo(() => {
+    const base = [...PROJECTS];
+    if (existingProjects) {
+      for (const p of existingProjects) {
+        if (!base.includes(p)) base.push(p);
+      }
+    }
+    return base;
+  }, [existingProjects]);
   const [phase, setPhase] = useState<SheetPhase>("hidden");
 
   // Editable fields
@@ -224,7 +234,7 @@ export function CardEditSheet({ isOpen, card, onSave, onClose }: CardEditSheetPr
               프로젝트 태그
             </p>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {PROJECTS.map((proj) => {
+              {allProjects.map((proj) => {
                 const isActive = proj === projectTag;
                 return (
                   <button

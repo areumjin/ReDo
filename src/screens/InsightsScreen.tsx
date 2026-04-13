@@ -21,7 +21,7 @@ const SUB_TABS: SubTab[] = ["취향", "프로젝트", "습관", "시각"];
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
 
-const USER_NAME = "지원";
+// USER_NAME is now read from props
 
 // Rank-based color palette for taste items
 const TASTE_COLORS = [
@@ -348,15 +348,18 @@ function RingProgress({
 
 function AISummaryCard({
   topKeywords,
+  userName,
 }: {
   topKeywords: { keyword: string; count: number; percent: number }[];
+  userName?: string;
 }) {
+  const displayName = userName ?? "게스트";
   const top3 = topKeywords.slice(0, 3);
   const dynamicSentence =
     top3.length >= 2
-      ? `${USER_NAME}은 ${top3[0].keyword}, ${top3[1].keyword} 스타일을 반복해서 저장해.`
+      ? `${displayName}은 ${top3[0].keyword}, ${top3[1].keyword} 스타일을 반복해서 저장해.`
       : top3.length === 1
-      ? `${USER_NAME}은 ${top3[0].keyword} 스타일을 주로 저장해.`
+      ? `${displayName}은 ${top3[0].keyword} 스타일을 주로 저장해.`
       : "레퍼런스를 더 저장하면 취향을 분석해줄게요.";
 
   const chipList = topKeywords.slice(0, 5).map((k) => k.keyword);
@@ -455,9 +458,11 @@ function AISummaryCard({
 function StylePreferenceCard({
   mounted,
   tasteItems,
+  userName,
 }: {
   mounted: boolean;
   tasteItems: { label: string; percent: number; count: number }[];
+  userName?: string;
 }) {
   const items = tasteItems.slice(0, 4);
 
@@ -478,7 +483,7 @@ function StylePreferenceCard({
             fontFamily: FONT,
           }}
         >
-          {USER_NAME}이 반복해서 저장하는 스타일
+          {(userName ?? "게스트")}이 반복해서 저장하는 스타일
         </p>
       </div>
 
@@ -1417,6 +1422,7 @@ interface InsightsScreenProps {
   onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onFabPress?: () => void;
   onCardTap?: (card: CardData) => void;
+  userName?: string;
 }
 
 export function InsightsScreen({
@@ -1425,7 +1431,9 @@ export function InsightsScreen({
   onTabChange,
   onFabPress,
   onCardTap,
+  userName,
 }: InsightsScreenProps) {
+  const USER_NAME = userName ?? "게스트";
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("취향");
 
   // ── Project tab state ──────────────────────────────────────────────────────
@@ -1505,8 +1513,8 @@ export function InsightsScreen({
     <div
       className="flex flex-col relative"
       style={{
-        width: 375,
-        height: 812,
+        width: "100%",
+        height: "100%",
         background: "var(--redo-bg-secondary)",
         fontFamily: FONT,
         overflow: "hidden",
@@ -1571,8 +1579,8 @@ export function InsightsScreen({
               padding: "16px 16px",
             }}
           >
-            <AISummaryCard topKeywords={topKeywords} />
-            <StylePreferenceCard mounted={mounted} tasteItems={tasteItems} />
+            <AISummaryCard topKeywords={topKeywords} userName={USER_NAME} />
+            <StylePreferenceCard mounted={mounted} tasteItems={tasteItems} userName={USER_NAME} />
             <TrendCard sparklineData={sparklineData} trendKeyword={trendKeyword} />
             <KeywordCloudCard keywords={topKeywords} />
             <div style={{ height: 4 }} />
