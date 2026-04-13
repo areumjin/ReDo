@@ -1,4 +1,53 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, Component, type ErrorInfo, type ReactNode } from "react";
+
+// ─── Error Boundary ────────────────────────────────────────────────────────────
+export class AppErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ReDo ErrorBoundary]", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            position: "fixed", inset: 0, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", padding: 24,
+            background: "#fff", gap: 16, fontFamily: "sans-serif",
+          }}
+        >
+          <div style={{ fontSize: 40 }}>⚠️</div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1A1A2E", margin: 0 }}>
+            오류가 발생했습니다
+          </h2>
+          <p style={{ fontSize: 13, color: "#888", textAlign: "center", margin: 0 }}>
+            {this.state.error?.message ?? "알 수 없는 오류"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "12px 24px", background: "#6A70FF", color: "#fff",
+              border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            새로고침
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { HomeScreen } from "./screens/HomeScreen";
 import { ActionScreen } from "./screens/ActionScreen";
 import { ArchiveScreen } from "./screens/ArchiveScreen";
@@ -394,7 +443,7 @@ export default function App() {
           style={{
             width: 56,
             height: 56,
-            background: "var(--redo-brand)",
+            background: "#6A70FF",
             borderRadius: 16,
             display: "flex",
             alignItems: "center",
@@ -411,7 +460,7 @@ export default function App() {
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: "var(--redo-brand)",
+                background: "#6A70FF",
                 animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
               }}
             />
