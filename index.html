@@ -6,11 +6,12 @@
     <title>ReDo</title>
     <!-- PWA -->
     <meta name="theme-color" content="#6A70FF" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ReDo" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- manifest는 vite-plugin-pwa가 빌드 시 자동 주입 -->
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
   </head>
   <body>

@@ -105,6 +105,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
           placeholder="이메일"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           required
           style={{
             width: "100%",
@@ -127,6 +128,7 @@ export function LoginScreen({ onLoginSuccess, onGuestMode }: LoginScreenProps) {
           placeholder="비밀번호 (6자 이상)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
           required
           minLength={6}
           style={{
