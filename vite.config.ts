@@ -24,12 +24,18 @@ export default defineConfig({
         scope: '/',
         share_target: {
           action: '/save',
-          method: 'GET',
-          enctype: 'application/x-www-form-urlencoded',
+          method: 'POST',
+          enctype: 'multipart/form-data',
           params: {
             url: 'url',
             title: 'title',
             text: 'text',
+            files: [
+              {
+                name: 'image',
+                accept: ['image/*'],
+              },
+            ],
           },
         },
         icons: [
@@ -50,9 +56,10 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        // 배포할 때마다 서비스 워커가 즉시 새 버전으로 교체되도록
+        // Share Target POST 핸들러 — Workbox보다 먼저 등록되어야 함
+        importScripts: ['/sw-share.js'],
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/supabase/],
+        navigateFallbackDenylist: [/^\/api/, /^\/supabase/, /^\/save/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {

@@ -1036,6 +1036,7 @@ interface SaveBottomSheetProps {
   }) => void;
   initialUrl?: string;
   initialTitle?: string;
+  initialImageUrl?: string;  // Share Target Level 2 — 공유된 이미지 object URL
   isFromShare?: boolean;
   existingProjects?: string[];
   folderColors?: Record<string, string>;
@@ -1049,6 +1050,7 @@ export function SaveBottomSheet({
   onOptimisticSave,
   initialUrl,
   initialTitle,
+  initialImageUrl,
   isFromShare = false,
   existingProjects,
   folderColors,
@@ -1128,12 +1130,22 @@ export function SaveBottomSheet({
       setSaved(false);
       setAiState("idle");
       setAiAnalysis(null);
-      setUploadedImageUrl(null);
       setImageUploading(false);
       if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
-      // Auto-trigger fetch if initialUrl provided
-      if (startUrl && isValidUrl(startUrl)) {
-        triggerFetch(startUrl);
+
+      // Share Target Level 2: 이미지가 직접 전달된 경우
+      if (initialImageUrl) {
+        setUploadedImageUrl(initialImageUrl);
+        setMeta({ image: initialImageUrl, title: null, domain: extractDomain(startUrl || "") });
+        setFetchState("success");
+        // URL도 있으면 AI 분석은 계속 트리거
+        if (startUrl && isValidUrl(startUrl)) triggerAIAnalysis(startUrl);
+      } else {
+        setUploadedImageUrl(null);
+        // Auto-trigger fetch if initialUrl provided
+        if (startUrl && isValidUrl(startUrl)) {
+          triggerFetch(startUrl);
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
