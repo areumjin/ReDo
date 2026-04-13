@@ -931,6 +931,8 @@ interface SaveBottomSheetProps {
     title: string;
     urlValue: string;
   }) => void;
+  initialUrl?: string;
+  initialTitle?: string;
 }
 
 export function SaveBottomSheet({
@@ -938,6 +940,8 @@ export function SaveBottomSheet({
   onClose,
   onSave,
   onOptimisticSave,
+  initialUrl,
+  initialTitle,
 }: SaveBottomSheetProps) {
   const [phase, setPhase] = useState<
     "hidden" | "entering" | "visible" | "leaving"
@@ -958,6 +962,11 @@ export function SaveBottomSheet({
   const [aiState, setAiState] = useState<AIState>("idle");
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const aiDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Image upload state
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
@@ -982,19 +991,27 @@ export function SaveBottomSheet({
   // Reset on open
   useEffect(() => {
     if (visible) {
-      setUrlValue("");
+      const startUrl = initialUrl ?? "";
+      setUrlValue(startUrl);
       setFetchState("idle");
       setMeta(null);
       setActiveProject("브랜딩 과제");
       setProjects([...PROJECTS]);
       setSelectedChips(["타이포 참고"]);
-      setMemoValue("");
+      setMemoValue(initialTitle ?? "");
       setNewProject(null);
       setSaved(false);
       setAiState("idle");
       setAiAnalysis(null);
+      setUploadedImageUrl(null);
+      setImageUploading(false);
       if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
+      // Auto-trigger fetch if initialUrl provided
+      if (startUrl && isValidUrl(startUrl)) {
+        triggerFetch(startUrl);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   // Fetch link metadata using fetchLinkMetadata util
@@ -1091,6 +1108,52 @@ export function SaveBottomSheet({
     setMeta(null);
     setAiState("idle");
     setAiAnalysis(null);
+    setUploadedImageUrl(null);
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploading(true);
+
+    // Show base64 preview immediately
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target?.result as string;
+      setUploadedImageUrl(base64);
+
+      // Try uploading to Supabase Storage if configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const filename = `${Date.now()}.jpg`;
+          const uploadRes = await fetch(
+            `${supabaseUrl}/storage/v1/object/references/${filename}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": file.type || "image/jpeg",
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
+              },
+              body: file,
+            }
+          );
+          if (uploadRes.ok) {
+            const publicUrl = `${supabaseUrl}/storage/v1/object/public/references/${filename}`;
+            setUploadedImageUrl(publicUrl);
+          }
+        } catch {
+          // Keep base64 preview on upload error
+        }
+      }
+
+      setImageUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleChip = (chip: string) => {
@@ -1100,10 +1163,11 @@ export function SaveBottomSheet({
   };
 
   const handleSave = () => {
+    const finalImageUrl = uploadedImageUrl ?? meta?.image ?? null;
     // Fire optimistic callback immediately — no delay
     onOptimisticSave?.({
       projectTag: activeProject,
-      image: meta?.image ?? null,
+      image: finalImageUrl,
       title: meta?.title ?? meta?.domain ?? (urlValue ? urlValue : "새 레퍼런스"),
       urlValue,
     });
@@ -1113,7 +1177,7 @@ export function SaveBottomSheet({
       onSave?.({
         title: meta?.title ?? (urlValue ? extractDomain(urlValue) : "새 레퍼런스"),
         savedReason: memoValue,
-        imageUrl: meta?.image ?? null,
+        imageUrl: finalImageUrl,
         url: urlValue,
         projectTag: activeProject,
         chips: selectedChips,
@@ -1299,9 +1363,104 @@ export function SaveBottomSheet({
 
             <ThumbnailPreview
               fetchState={fetchState}
-              meta={meta}
+              meta={uploadedImageUrl ? null : meta}
               onClear={handleClear}
             />
+
+            {/* Uploaded image preview */}
+            {uploadedImageUrl && (
+              <div
+                style={{
+                  marginTop: 10,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  border: "0.5px solid var(--redo-border)",
+                  position: "relative",
+                  animation: "redo-fadein 0.22s ease",
+                }}
+              >
+                <img
+                  src={uploadedImageUrl}
+                  alt="업로드된 이미지"
+                  style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }}
+                />
+                <button
+                  onClick={() => setUploadedImageUrl(null)}
+                  style={{
+                    position: "absolute", top: 6, right: 6,
+                    width: 22, height: 22, minWidth: 36, minHeight: 36,
+                    borderRadius: "50%", background: "rgba(0,0,0,0.45)",
+                    border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleImageFileChange}
+            />
+
+            {/* Image upload button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+              style={{
+                marginTop: 8,
+                width: "100%",
+                height: 44,
+                borderRadius: 10,
+                border: "1.5px dashed var(--redo-border)",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                cursor: imageUploading ? "default" : "pointer",
+                color: "var(--redo-text-secondary)",
+                fontSize: "var(--text-caption)",
+                fontFamily: FONT,
+                fontWeight: "var(--font-weight-regular)",
+                transition: "border-color 0.15s ease, color 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!imageUploading) {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--redo-brand-mid)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--redo-brand)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--redo-border)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--redo-text-secondary)";
+              }}
+            >
+              {imageUploading ? (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.9s linear infinite" }}>
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
+                  </svg>
+                  업로드 중...
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M3 15l5-5 4 4 3-3 6 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  이미지 직접 업로드
+                </>
+              )}
+            </button>
           </div>
 
           {/* ── Section 2: Project ── */}

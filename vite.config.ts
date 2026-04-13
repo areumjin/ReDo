@@ -21,6 +21,15 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        share_target: {
+          action: '/save',
+          method: 'GET',
+          params: {
+            url: 'url',
+            title: 'title',
+            text: 'text',
+          },
+        },
         icons: [
           {
             src: '/icon-192.png',

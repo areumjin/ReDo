@@ -13,6 +13,16 @@ export interface CardData {
   // Supabase 연동 필드 (optional)
   supabaseId?: string;
   executionMemo?: string;
+  // AI 가공 상태
+  processingStatus?: "raw" | "processing" | "processed" | "failed";
+  aiAnalysis?: {
+    reasons?: string[];
+    keywords?: string[];
+    category?: string;
+    summary?: string;
+    colors?: Array<{ hex: string; percentage: number }>;
+    fonts?: Array<{ name: string; usage: string }>;
+  };
 }
 
 // ─── Canonical feed data — single source of truth ────────────────────────────

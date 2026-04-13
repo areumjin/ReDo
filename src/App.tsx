@@ -83,6 +83,10 @@ const forceOnboarding = searchParams.get("onboarding") === "true";
 const isAlreadyOnboarded =
   !forceOnboarding && localStorage.getItem("redo_onboarded") === "true";
 
+// ─── PWA Share Target params ──────────────────────────────────────────────────
+const sharedUrl = searchParams.get("url") ?? searchParams.get("text") ?? null;
+const sharedTitle = searchParams.get("title") ?? null;
+
 type AppScreen = "loading" | "login" | "onboarding" | "main";
 
 // ─── Skeleton card placeholder ─────────────────────────────────────────────────
@@ -111,6 +115,8 @@ export default function App() {
   const [returnTab, setReturnTab] = useState<ActiveTab>("홈");
   const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetInitialUrl, setSheetInitialUrl] = useState<string | undefined>(undefined);
+  const [sheetInitialTitle, setSheetInitialTitle] = useState<string | undefined>(undefined);
   const [aiRecommendVisible, setAiRecommendVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
 
@@ -189,6 +195,50 @@ export default function App() {
       setCardsLoading(false);
     }
   }, []);
+
+  // ── PWA Share Target — open sheet with shared URL ─────────────────────────
+  useEffect(() => {
+    if (sharedUrl && appScreen === "main") {
+      setSheetInitialUrl(sharedUrl);
+      setSheetInitialTitle(sharedTitle ?? undefined);
+      setSheetOpen(true);
+    }
+  // Only run once when main screen becomes available
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appScreen]);
+
+  // ── Clipboard URL detection (visibility change) ────────────────────────────
+  useEffect(() => {
+    if (appScreen !== "main") return;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const text = await navigator.clipboard.readText();
+        const trimmed = text.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return;
+        // Only show toast if it looks like a full URL
+        try { new URL(trimmed); } catch { return; }
+
+        showToast({
+          variant: "later",
+          sourceChip: "클립보드에 URL이 있어요! 저장하기",
+        });
+
+        // We show a custom toast message — override with a click handler
+        // Since useToast doesn't support custom actions, show a simpler approach:
+        // The user can open the sheet manually after seeing the toast
+        // For full auto-open behavior, we store URL in state
+        setSheetInitialUrl(trimmed);
+        setSheetInitialTitle(undefined);
+      } catch {
+        // clipboard permission denied or unavailable
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [appScreen, showToast]);
 
   // ── Onboarding handlers ───────────────────────────────────────────────────
   const handleOnboardingComplete = () => {
@@ -394,10 +444,22 @@ export default function App() {
           source: source || "",
           statusDot: "미실행",
           daysAgo: "방금 전",
+          processingStatus: "processing",
         };
         setCards((prev) => [newCard, ...prev]);
         setPendingStatus("confirmed");
         showToast({ variant: "success", sourceChip: projectTag });
+
+        // Simulate async AI processing → update to "processed" after a delay
+        setTimeout(() => {
+          setCards((prev) =>
+            prev.map((c) =>
+              c.id === newCard.id
+                ? { ...c, processingStatus: "processed" as const }
+                : c
+            )
+          );
+        }, 5000);
 
         // Supabase에도 저장 (supabase가 설정된 경우)
         if (supabase && currentUserId) {
@@ -673,9 +735,15 @@ export default function App() {
             {/* Save bottom sheet */}
             <SaveBottomSheet
               visible={sheetOpen}
-              onClose={() => setSheetOpen(false)}
+              onClose={() => {
+                setSheetOpen(false);
+                setSheetInitialUrl(undefined);
+                setSheetInitialTitle(undefined);
+              }}
               onSave={handleSave}
               onOptimisticSave={handleOptimisticSave}
+              initialUrl={sheetInitialUrl}
+              initialTitle={sheetInitialTitle}
             />
 
             {/* Execution memo sheet */}

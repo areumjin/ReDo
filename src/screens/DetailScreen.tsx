@@ -4,6 +4,23 @@ import { ImageWithFallback } from "../components/ImageWithFallback";
 import { type CardData } from "../types";
 import { extractColors, type ExtractedColor } from "../lib/colorExtractor";
 
+// ─── Font types ───────────────────────────────────────────────────────────────
+
+interface FontEntry {
+  name: string;
+  usage: string;
+  weight: string;
+  similar_free: string;
+}
+
+// ─── Article summary types ────────────────────────────────────────────────────
+
+interface ArticleSummary {
+  summary: string;
+  key_insights: string[];
+  action_items: string[];
+}
+
 // ─── Keyframe injection ───────────────────────────────────────────────────────
 
 const DETAIL_STYLE_ID = "redo-detail-keyframes";
@@ -123,6 +140,14 @@ export function DetailScreen({
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [scaledHex, setScaledHex] = useState<string | null>(null);
 
+  // ── Font identification state ──
+  const [fontData, setFontData] = useState<FontEntry[]>([]);
+  const [fontLoading, setFontLoading] = useState(false);
+
+  // ── Article summary state ──
+  const [articleSummary, setArticleSummary] = useState<ArticleSummary | null>(null);
+  const [articleLoading, setArticleLoading] = useState(false);
+
   // ── Parallax & header fade state (using refs to avoid re-renders on scroll) ──
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroImgRef = useRef<HTMLImageElement & HTMLDivElement>(null);
@@ -211,6 +236,83 @@ export function DetailScreen({
     });
     return () => { cancelled = true; };
   }, [card?.image]);
+
+  // Identify fonts when card changes (image-based cards only)
+  useEffect(() => {
+    setFontData([]);
+    setFontLoading(false);
+    if (!card?.image) return;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    if (!supabaseUrl) return;
+
+    let cancelled = false;
+    setFontLoading(true);
+
+    fetch(`${supabaseUrl}/functions/v1/identify-fonts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: card.image }),
+      signal: AbortSignal.timeout(30000),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const fonts: FontEntry[] = Array.isArray(data?.fonts) ? data.fonts : [];
+        setFontData(fonts);
+        setFontLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setFontLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [card?.id, card?.image]);
+
+  // Summarize article when card changes (URL-based or no-image cards)
+  useEffect(() => {
+    setArticleSummary(null);
+    setArticleLoading(false);
+    if (!card) return;
+
+    // Only for cards with a URL source but maybe no image
+    const hasUrl = card.source && (card.source.startsWith("http://") || card.source.startsWith("https://"));
+    if (!hasUrl) return;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    if (!supabaseUrl) return;
+
+    let cancelled = false;
+    setArticleLoading(true);
+
+    fetch(`${supabaseUrl}/functions/v1/summarize-article`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: card.source,
+        title: card.title,
+        description: card.savedReason,
+      }),
+      signal: AbortSignal.timeout(30000),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.summary) {
+          setArticleSummary({
+            summary: data.summary,
+            key_insights: Array.isArray(data.key_insights) ? data.key_insights : [],
+            action_items: Array.isArray(data.action_items) ? data.action_items : [],
+          });
+        }
+        setArticleLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setArticleLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [card?.id, card?.source]);
 
   // Related cards logic
   const relatedCards = card
@@ -670,6 +772,194 @@ export function DetailScreen({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Font Identification ── */}
+          {card.image && (fontLoading || fontData.length > 0) && (
+            <div
+              style={{
+                background: "var(--redo-bg-secondary, #F8F7F4)",
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: "var(--font-weight-medium)",
+                  color: "var(--redo-context-label)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  margin: 0,
+                  marginBottom: fontLoading ? 0 : 10,
+                  lineHeight: 1.3,
+                  fontFamily: FONT,
+                }}
+              >
+                사용 폰트
+              </p>
+
+              {fontLoading ? (
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "var(--redo-brand)",
+                        display: "inline-block",
+                        animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {fontData.map((font, idx) => (
+                    <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "var(--redo-text-primary)",
+                            fontFamily: FONT,
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {font.name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 500,
+                            color: "var(--redo-brand)",
+                            background: "var(--redo-brand-light)",
+                            borderRadius: 99,
+                            padding: "2px 7px",
+                            fontFamily: FONT,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {font.usage}
+                        </span>
+                        {font.weight && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "var(--redo-text-tertiary)",
+                              fontFamily: FONT,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {font.weight}
+                          </span>
+                        )}
+                      </div>
+                      {font.similar_free && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#888",
+                            fontFamily: FONT,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          유사 무료: {font.similar_free}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Article Summary ── */}
+          {(articleLoading || articleSummary) && (
+            <div
+              style={{
+                background: "#EEEFFE",
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: "var(--font-weight-medium)",
+                  color: "var(--redo-context-label)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  margin: 0,
+                  marginBottom: articleLoading ? 0 : 8,
+                  lineHeight: 1.3,
+                  fontFamily: FONT,
+                }}
+              >
+                AI 요약
+              </p>
+
+              {articleLoading ? (
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "var(--redo-brand)",
+                        display: "inline-block",
+                        animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : articleSummary ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {articleSummary.summary && (
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "var(--redo-context-text)",
+                        lineHeight: 1.5,
+                        fontFamily: FONT,
+                        margin: 0,
+                      }}
+                    >
+                      {articleSummary.summary}
+                    </p>
+                  )}
+                  {articleSummary.key_insights.length > 0 && (
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                      {articleSummary.key_insights.map((insight, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 500,
+                            color: "var(--redo-context-text)",
+                            background: "var(--redo-bg-secondary)",
+                            borderRadius: 99,
+                            padding: "3px 9px",
+                            fontFamily: FONT,
+                            lineHeight: 1.4,
+                            border: "0.5px solid rgba(106,112,255,0.15)",
+                          }}
+                        >
+                          {insight}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
 

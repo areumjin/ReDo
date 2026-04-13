@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReDo Collector</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="popup-header">
+    <div class="popup-logo">
+      <span class="popup-logo-text">Re</span>
+    </div>
+    <div class="popup-header-text">
+      <h1 class="popup-title">ReDo</h1>
+      <p class="popup-subtitle">레퍼런스 저장소</p>
+    </div>
+  </header>
+
+  <!-- Save current page button -->
+  <div class="popup-body">
+    <button class="popup-save-btn" id="saveCurrentPage">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      현재 페이지 저장하기
+    </button>
+
+    <!-- Recent cards -->
+    <div class="popup-section">
+      <p class="popup-section-label">최근 저장</p>
+      <div id="recentCards" class="popup-cards">
+        <p class="popup-empty">저장된 레퍼런스가 없어요</p>
+      </div>
+    </div>
+
+    <!-- Open app link -->
+    <a href="https://re-do-nine.vercel.app" target="_blank" class="popup-open-app">
+      ReDo 앱 열기 →
+    </a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

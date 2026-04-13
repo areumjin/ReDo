@@ -1,0 +1,36 @@
+/* ─── ReDo Save Button Overlay ─────────────────────────────────────────────── */
+
+.redo-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #6A70FF;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(106, 112, 255, 0.4);
+  transition: transform 100ms ease, box-shadow 100ms ease, opacity 100ms ease;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: redo-btn-fadein 0.15s ease;
+}
+
+.redo-save-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 4px 14px rgba(106, 112, 255, 0.55);
+}
+
+.redo-save-btn:active {
+  transform: scale(0.96);
+}
+
+@keyframes redo-btn-fadein {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}

@@ -3,6 +3,21 @@ import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ALL_CARDS, type CardData } from "../types";
 
+// ─── Keyframe injection ───────────────────────────────────────────────────────
+
+const HOME_STYLE_ID = "redo-home-keyframes";
+if (typeof document !== "undefined" && !document.getElementById(HOME_STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = HOME_STYLE_ID;
+  s.textContent = `
+    @keyframes redo-processing-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const FONT =
@@ -653,6 +668,67 @@ function AIExpandSection({
   );
 }
 
+// ─── Processing Status Badge ──────────────────────────────────────────────────
+
+function ProcessingBadge({ status }: { status: CardData["processingStatus"] }) {
+  if (!status || status === "raw") return null;
+
+  if (status === "processing") {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          bottom: 8,
+          right: 8,
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "var(--redo-brand)",
+          animation: "redo-processing-pulse 1.4s ease-in-out infinite",
+        }}
+      />
+    );
+  }
+
+  if (status === "processed") {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          bottom: 8,
+          right: 8,
+          fontSize: 10,
+          color: "var(--redo-brand)",
+          lineHeight: 1,
+          textShadow: "0 0 4px rgba(255,255,255,0.8)",
+        }}
+      >
+        ✦
+      </div>
+    );
+  }
+
+  if (status === "failed") {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          bottom: 8,
+          right: 8,
+          fontSize: 10,
+          color: "#999",
+          lineHeight: 1,
+          textShadow: "0 0 4px rgba(255,255,255,0.8)",
+        }}
+      >
+        !
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ─── Moodboard Card ───────────────────────────────────────────────────────────
 
 function MoodboardCard({
@@ -753,6 +829,9 @@ function MoodboardCard({
           </svg>
         </div>
       )}
+
+      {/* Processing status badge */}
+      <ProcessingBadge status={card.processingStatus} />
 
       {/* Context Box — 저장 이유 */}
       {card.savedReason && (
@@ -867,6 +946,29 @@ export function HomeScreen({
       >
         <div style={{ paddingTop: 12 }}>
           <DaySummaryBanner totalCount={totalCount} executedCount={executedCount} />
+
+          {/* Processing status summary */}
+          {(() => {
+            const processedCount = cardSource.filter((c) => c.processingStatus === "processed").length;
+            const processingCount = cardSource.filter((c) => c.processingStatus === "processing").length;
+            if (processedCount === 0 && processingCount === 0) return null;
+            return (
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--redo-text-secondary)",
+                  fontFamily: FONT,
+                  margin: 0,
+                  padding: "0 12px 8px",
+                  lineHeight: 1.4,
+                }}
+              >
+                {processedCount > 0 && `${processedCount}개 소스 준비됨`}
+                {processedCount > 0 && processingCount > 0 && " · "}
+                {processingCount > 0 && `${processingCount}개 분석 중`}
+              </p>
+            );
+          })()}
 
           {/* AI Strip */}
           <div style={{ marginBottom: aiExpanded ? 0 : 12 }}>
