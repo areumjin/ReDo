@@ -58,6 +58,8 @@ interface OGMeta {
   image: string | null;
   title: string | null;
   domain: string;
+  socialColor?: string;  // 소셜 플랫폼 브랜드 컬러
+  socialEmoji?: string;  // 소셜 플랫폼 이모지
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -272,62 +274,87 @@ function ThumbnailPreview({
     );
   }
 
-  // ── Error ──
+  // ── Error / 이미지 없음 (소셜 플랫폼 브랜드 카드 포함) ──
   if (fetchState === "error" || (fetchState === "success" && !meta?.image)) {
+    const isSocial = !!(meta?.socialColor);
+    const brandColor = meta?.socialColor ?? "var(--redo-brand)";
+    const brandBg = isSocial
+      ? `${meta!.socialColor}14`   // 8% opacity tint
+      : "rgba(106,112,255,0.06)";
+
     return (
       <div
         style={{
           marginTop: 10,
           width: "100%",
-          height: 68,
-          borderRadius: 10,
-          background: "var(--redo-bg-secondary)",
-          border: "0.5px solid var(--redo-border)",
+          borderRadius: 12,
+          background: brandBg,
+          border: `1px solid ${isSocial ? meta!.socialColor + "30" : "var(--redo-border)"}`,
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "0 14px",
+          padding: "12px 14px",
           position: "relative",
           animation: "redo-fadein 0.2s ease",
         }}
       >
-        {/* Generic link icon */}
+        {/* 플랫폼 아이콘 / 이모지 */}
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: "rgba(106,112,255,0.08)",
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background: isSocial ? brandColor : "rgba(106,112,255,0.1)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
+            fontSize: isSocial ? 20 : 16,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
-              stroke="var(--redo-brand)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {isSocial ? (
+            <span>{meta!.socialEmoji}</span>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+                stroke="var(--redo-brand)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </div>
+
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
-              fontSize: "var(--text-micro)",
-              fontWeight: "var(--font-weight-medium)",
-              color: "var(--redo-text-secondary)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: isSocial ? brandColor : "var(--redo-text-secondary)",
               margin: 0,
               lineHeight: 1.4,
               fontFamily: FONT,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {meta?.title || "미리보기를 불러올 수 없어요"}
           </p>
-          {meta?.domain && (
+          {isSocial ? (
+            <p
+              style={{
+                margin: "3px 0 0",
+                fontSize: 11,
+                color: "var(--redo-text-tertiary)",
+                fontFamily: FONT,
+              }}
+            >
+              이미지는 저장 후 직접 추가할 수 있어요
+            </p>
+          ) : meta?.domain ? (
             <span
               style={{
                 display: "inline-block",
@@ -342,8 +369,9 @@ function ThumbnailPreview({
             >
               {meta.domain}
             </span>
-          )}
+          ) : null}
         </div>
+
         {/* Clear button */}
         <ClearButton onClear={onClear} />
       </div>
@@ -1173,10 +1201,13 @@ export function SaveBottomSheet({
 
     try {
       const linkMeta = await fetchLinkMetadata(url);
+      const extMeta = linkMeta as typeof linkMeta & { _socialColor?: string; _socialEmoji?: string };
       setMeta({
         image: linkMeta.imageUrl,
         title: linkMeta.title || null,
         domain: linkMeta.siteName || extractDomain(url),
+        socialColor: extMeta._socialColor,
+        socialEmoji: extMeta._socialEmoji,
       });
       setFetchState("success");
 

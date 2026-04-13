@@ -99,8 +99,70 @@ async function fetchAlloriginsMeta(url: string): Promise<LinkMetadata> {
   };
 }
 
+// ─── 소셜 플랫폼 감지 + 브랜드 메타 즉시 반환 ───────────────────────────────────
+
+interface SocialPlatform {
+  name: string;
+  color: string;       // 브랜드 컬러 (hex)
+  label: string;       // 게시물 유형 라벨
+  emoji: string;
+}
+
+function detectSocialPlatform(url: string): SocialPlatform | null {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const host = hostname.replace("www.", "");
+
+    if (host === "instagram.com" || host === "instagr.am") {
+      const isReel = pathname.includes("/reel/");
+      const isStory = pathname.includes("/stories/");
+      return {
+        name: "Instagram",
+        color: "#E1306C",
+        label: isReel ? "Instagram 릴스" : isStory ? "Instagram 스토리" : "Instagram 게시물",
+        emoji: "📸",
+      };
+    }
+    if (host === "pinterest.com" || host === "pin.it" || host === "pinterest.co.kr") {
+      return { name: "Pinterest", color: "#E60023", label: "Pinterest 핀", emoji: "📌" };
+    }
+    if (host === "tiktok.com" || host === "vm.tiktok.com") {
+      return { name: "TikTok", color: "#010101", label: "TikTok 영상", emoji: "🎵" };
+    }
+    if (host === "twitter.com" || host === "x.com" || host === "t.co") {
+      return { name: "X (Twitter)", color: "#000000", label: "X 게시물", emoji: "🐦" };
+    }
+    if (host === "threads.net") {
+      return { name: "Threads", color: "#101010", label: "Threads 게시물", emoji: "🧵" };
+    }
+    if (host === "behance.net") {
+      return { name: "Behance", color: "#1769FF", label: "Behance 프로젝트", emoji: "🎨" };
+    }
+    if (host === "dribbble.com") {
+      return { name: "Dribbble", color: "#EA4C89", label: "Dribbble 샷", emoji: "🏀" };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 // ─── 메인 함수 ────────────────────────────────────────────────────────────────
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+  // 0. 소셜 플랫폼 → 프록시 없이 즉시 브랜드 메타 반환
+  const social = detectSocialPlatform(url);
+  if (social) {
+    return {
+      title: social.label,
+      description: `${social.name}에서 공유된 콘텐츠`,
+      imageUrl: null,           // 이미지 없음 — ThumbnailPreview에서 브랜드 플레이스홀더 표시
+      siteName: social.name,
+      favicon: null,
+      _socialColor: social.color,
+      _socialEmoji: social.emoji,
+    } as LinkMetadata & { _socialColor: string; _socialEmoji: string };
+  }
+
   // 1. YouTube → 공식 oEmbed
   const videoId = getYouTubeVideoId(url);
   if (videoId) {
