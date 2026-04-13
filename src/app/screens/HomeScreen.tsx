@@ -46,6 +46,7 @@ interface ReferenceCardProps {
 
 function ReferenceCard({ card, onSelect }: ReferenceCardProps) {
   const [imgError, setImgError] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   return (
     <button
@@ -55,13 +56,17 @@ function ReferenceCard({ card, onSelect }: ReferenceCardProps) {
     >
       {/* Image */}
       {card.imageUrl && !imgError ? (
-        <div className="w-full aspect-[4/3] overflow-hidden bg-surface-subtle">
+        <div className="w-full aspect-[4/3] overflow-hidden bg-surface-subtle relative">
+          {!imgLoaded && (
+            <div className="absolute inset-0 shimmer" />
+          )}
           <img
             src={card.imageUrl}
-            alt={card.title}
+            alt=""
             loading="lazy"
+            onLoad={() => setImgLoaded(true)}
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
+            className={cn('w-full h-full object-cover transition-opacity duration-200', imgLoaded ? 'opacity-100' : 'opacity-0')}
           />
         </div>
       ) : (

@@ -51,7 +51,7 @@ export default function ActionScreen({ cards, executedCardIds, onExecute, onCard
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => onExecute(card.id)}
-                  className="mt-0.5 flex-shrink-0"
+                  className="flex-shrink-0 size-11 flex items-center justify-center -ms-3 -mt-3"
                   aria-label={isDone ? '완료 취소' : '활용 완료 표시'}
                 >
                   {isDone

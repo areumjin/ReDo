@@ -2,19 +2,46 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/components/ui/utils'
 
+interface SaveData {
+  title: string
+  url: string
+  savedReason: string
+  projectTag: string
+  chips: string[]
+  imageUrl: string | null
+}
+
 interface SaveBottomSheetProps {
   isOpen: boolean
   onClose: () => void
+  onSave: (data: SaveData) => void
 }
 
-export default function SaveBottomSheet({ isOpen, onClose }: SaveBottomSheetProps) {
+const PROJECT_TAGS = ['졸업전시', '브랜딩 과제', '개인 프로젝트', '기타']
+
+export default function SaveBottomSheet({ isOpen, onClose, onSave }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('')
   const [reason, setReason] = useState('')
+  const [projectTag, setProjectTag] = useState('기타')
 
   const handleSave = () => {
-    // TODO: save logic
+    if (!url.trim()) return
+
+    let title = url.trim()
+    try { title = new URL(url).hostname.replace('www.', '') + ' 레퍼런스' } catch { /* use raw */ }
+
+    onSave({
+      title,
+      url: url.trim(),
+      savedReason: reason.trim(),
+      projectTag,
+      chips: [],
+      imageUrl: null,
+    })
+
     setUrl('')
     setReason('')
+    setProjectTag('기타')
     onClose()
   }
 
@@ -49,7 +76,7 @@ export default function SaveBottomSheet({ isOpen, onClose }: SaveBottomSheetProp
           <h2 className="text-[18px] font-bold text-text-primary">레퍼런스 저장</h2>
           <button
             onClick={onClose}
-            className="size-8 rounded-lg flex items-center justify-center text-icon-default"
+            className="size-11 rounded-lg flex items-center justify-center text-icon-default"
           >
             <X className="size-5" strokeWidth={1.8} />
           </button>
@@ -66,9 +93,33 @@ export default function SaveBottomSheet({ isOpen, onClose }: SaveBottomSheetProp
               type="url"
               value={url}
               onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && canSave) handleSave() }}
               placeholder="https://"
               className="w-full h-12 px-4 rounded-xl bg-input-background text-[14px] text-text-primary placeholder:text-text-disabled outline-none focus:ring-2 focus:ring-brand/30"
             />
+          </div>
+
+          {/* Project tag */}
+          <div>
+            <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+              프로젝트
+            </label>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {PROJECT_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setProjectTag(tag)}
+                  className={cn(
+                    'flex-shrink-0 h-8 px-3.5 rounded-full text-[12px] font-medium transition-colors duration-150',
+                    projectTag === tag
+                      ? 'bg-brand-tint text-brand'
+                      : 'bg-surface-subtle text-text-secondary'
+                  )}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Reason input — Context box style */}
