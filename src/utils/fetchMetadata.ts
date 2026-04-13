@@ -99,6 +99,46 @@ async function fetchAlloriginsMeta(url: string): Promise<LinkMetadata> {
   };
 }
 
+// ─── Supabase Edge Function (서버 사이드 fetch) ────────────────────────────────
+
+async function fetchViaEdgeFunction(url: string): Promise<LinkMetadata | null> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!supabaseUrl || !supabaseKey) return null;
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/fetch-metadata`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      title?: string;
+      description?: string;
+      imageBase64?: string | null;
+      imageUrl?: string | null;
+      siteName?: string;
+      error?: string;
+    };
+    if (data.error) return null;
+
+    return {
+      title: data.title ?? "",
+      description: data.description ?? "",
+      imageUrl: data.imageBase64 ?? data.imageUrl ?? null,
+      siteName: data.siteName ?? "",
+      favicon: null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── 소셜 플랫폼 감지 + 브랜드 메타 즉시 반환 ───────────────────────────────────
 
 interface SocialPlatform {
@@ -149,13 +189,27 @@ function detectSocialPlatform(url: string): SocialPlatform | null {
 
 // ─── 메인 함수 ────────────────────────────────────────────────────────────────
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
-  // 0. 소셜 플랫폼 → 프록시 없이 즉시 브랜드 메타 반환
+  // 0. 소셜 플랫폼 → Edge Function으로 서버 사이드 fetch 시도
   const social = detectSocialPlatform(url);
   if (social) {
+    // Edge Function으로 실제 이미지 가져오기 시도
+    const edgeResult = await fetchViaEdgeFunction(url);
+    if (edgeResult && (edgeResult.imageUrl || edgeResult.title)) {
+      return {
+        ...edgeResult,
+        siteName: edgeResult.siteName || social.name,
+        // 이미지가 없으면 소셜 플랫폼 색상 정보 첨부
+        ...(!edgeResult.imageUrl && {
+          _socialColor: social.color,
+          _socialEmoji: social.emoji,
+        }),
+      } as LinkMetadata & { _socialColor?: string; _socialEmoji?: string };
+    }
+    // Edge Function 실패 → 브랜드 플레이스홀더 폴백
     return {
       title: social.label,
       description: `${social.name}에서 공유된 콘텐츠`,
-      imageUrl: null,           // 이미지 없음 — ThumbnailPreview에서 브랜드 플레이스홀더 표시
+      imageUrl: null,
       siteName: social.name,
       favicon: null,
       _socialColor: social.color,
