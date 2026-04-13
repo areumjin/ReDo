@@ -1028,7 +1028,7 @@ export function SaveBottomSheet({
 
   // AI analysis via Supabase Edge Function (debounced 1.2s)
   // ⚠️ must be declared BEFORE triggerFetch which references it
-  const triggerAIAnalysis = useCallback((url: string) => {
+  const triggerAIAnalysis = useCallback((url: string, prefetchedTitle?: string, prefetchedDescription?: string) => {
     if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -1042,7 +1042,11 @@ export function SaveBottomSheet({
         const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({
+            url,
+            title: prefetchedTitle ?? meta?.title ?? undefined,
+            description: prefetchedDescription ?? undefined,
+          }),
           signal: AbortSignal.timeout(20000),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1081,18 +1085,17 @@ export function SaveBottomSheet({
     setFetchState("loading");
     setMeta(null);
 
-    // Also trigger AI analysis with debounce
-    triggerAIAnalysis(url);
-
     try {
       const linkMeta = await fetchLinkMetadata(url);
-      // Map to OGMeta shape for existing ThumbnailPreview component
       setMeta({
         image: linkMeta.imageUrl,
         title: linkMeta.title || null,
         domain: linkMeta.siteName || extractDomain(url),
       });
       setFetchState("success");
+
+      // 메타 가져온 후 title/description 함께 AI 분석 트리거
+      triggerAIAnalysis(url, linkMeta.title || undefined, linkMeta.description || undefined);
 
       // Auto-fill description (savedReason) if textarea is empty
       if (linkMeta.description && !memoValue) {
@@ -1110,6 +1113,8 @@ export function SaveBottomSheet({
     } catch {
       setMeta({ image: null, title: null, domain: extractDomain(url) });
       setFetchState("error");
+      // 메타 실패해도 AI 분석은 시도
+      triggerAIAnalysis(url);
     }
   }, [memoValue, triggerAIAnalysis]);
 
