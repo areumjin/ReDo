@@ -177,11 +177,12 @@ interface SettingsScreenProps {
   onSignOut?: () => void;
   currentUserId?: string | null;
   userName?: string;
+  onImportPress?: () => void;
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, currentUserId, userName }: SettingsScreenProps) {
+export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, currentUserId, userName, onImportPress }: SettingsScreenProps) {
   const [notifOn, setNotifOn] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -585,6 +586,11 @@ export function SettingsScreen({ executedCardIds, cards, onBack, onSignOut, curr
                 {executedCardIds.size}개
               </span>
             }
+          />
+          <Row
+            label="레퍼런스 가져오기"
+            trailing={<Chevron />}
+            onClick={onImportPress}
           />
           <Row
             label="데이터 내보내기"

@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
+import { fetchLinkMetadata } from "../utils/fetchMetadata";
+import { supabase } from "../lib/supabase";
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 
@@ -45,7 +47,32 @@ const FONT =
 const SWIPE_THRESHOLD = 65;
 const MAX_ROTATE = 10;
 
-const AI_CHIPS = ["타이포 참고", "그리드 구조", "색상 팔레트", "분위기"];
+// ─── SavedCardData interface (used by Step 3 + DEMO_CARDS) ───────────────────
+interface SavedCardData {
+  title: string;
+  reason: string;
+  chips: string[];
+  image?: string | null;
+  isDemo?: boolean; // 건너뛰기 시 Redo 데모 카드
+}
+
+// 온보딩 데모 카드 (건너뛰기 시)
+const DEMO_CARDS: SavedCardData[] = [
+  {
+    title: "ReDo — 디자인 레퍼런스 앱",
+    reason: "링크 저장 → 이유 기록 → 스와이프로 실행",
+    chips: ["UI", "브랜딩"],
+    image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&q=80",
+    isDemo: true,
+  },
+  {
+    title: "저장한 레퍼런스를 이렇게 꺼내줘요",
+    reason: "실행 ✓ 스와이프로 작업에 바로 적용",
+    chips: ["모션", "UI"],
+    image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80",
+    isDemo: true,
+  },
+];
 
 // ─── Platform Data ─────────────────────────────────────────────────────────────
 
@@ -491,6 +518,9 @@ interface Step2Props {
   urlInput: string;
   onUrlChange: (v: string) => void;
   thumbnailVisible: boolean;
+  ogImage: string | null;
+  aiReasons: string[];
+  aiLoading: boolean;
   selectedChips: Set<string>;
   onToggleChip: (chip: string) => void;
   savedReason: string;
@@ -503,6 +533,9 @@ function Step2Screen({
   urlInput,
   onUrlChange,
   thumbnailVisible,
+  ogImage,
+  aiReasons,
+  aiLoading,
   selectedChips,
   onToggleChip,
   savedReason,
@@ -593,63 +626,74 @@ function Step2Screen({
           </div>
         </div>
 
-        {/* Thumbnail preview */}
+        {/* Thumbnail preview — 실제 OG 이미지 or 도메인 플레이스홀더 */}
         <div
           style={{
-            height: thumbnailVisible ? 80 : 0,
-            borderRadius: "var(--radius-button)",
+            height: thumbnailVisible ? 120 : 0,
+            borderRadius: 12,
             overflow: "hidden",
             marginBottom: thumbnailVisible ? 12 : 0,
             transition: "height 300ms ease, margin-bottom 300ms ease",
-            background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
             flexShrink: 0,
+            position: "relative",
           }}
         >
-          {thumbnailVisible && (
-            <>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="3" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
-                <path d="M3 9h18" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
-                <circle cx="7" cy="6" r="1" fill="rgba(255,255,255,0.7)" />
-                <circle cx="10" cy="6" r="1" fill="rgba(255,255,255,0.7)" />
-              </svg>
-              <p
-                style={{
-                  fontSize: "var(--text-caption)",
-                  fontWeight: "var(--font-weight-regular)",
-                  color: "rgba(255,255,255,0.8)",
-                  fontFamily: FONT,
-                  margin: 0,
-                  lineHeight: 1.3,
-                }}
-              >
-                {urlInput.replace(/https?:\/\//, "").split("/")[0] || "링크 미리보기"}
-              </p>
-            </>
-          )}
+          {thumbnailVisible && ogImage ? (
+            <img
+              src={ogImage}
+              alt="미리보기"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          ) : thumbnailVisible ? (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {aiLoading ? (
+                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                  {[0,1,2].map(i => (
+                    <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.8)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
+                    <path d="M3 9h18" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
+                    <circle cx="7" cy="6" r="1" fill="rgba(255,255,255,0.7)" />
+                    <circle cx="10" cy="6" r="1" fill="rgba(255,255,255,0.7)" />
+                  </svg>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: FONT, margin: 0 }}>
+                    {urlInput.replace(/https?:\/\//, "").split("/")[0] || "링크 미리보기"}
+                  </p>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
 
-        {/* AI Chip suggestions */}
-        <p
-          style={{
-            fontSize: "var(--text-context-label)",
-            fontWeight: "var(--font-weight-regular)",
-            color: "var(--redo-text-tertiary)",
-            fontFamily: FONT,
-            margin: 0,
-            marginBottom: 8,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          AI 추천 저장 이유
-        </p>
+        {/* AI 추천 저장 이유 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <p style={{ fontSize: "var(--text-context-label)", fontWeight: "var(--font-weight-regular)", color: "var(--redo-text-tertiary)", fontFamily: FONT, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            AI 추천 저장 이유
+          </p>
+          {aiLoading && (
+            <div style={{ display: "flex", gap: 3 }}>
+              {[0,1,2].map(i => (
+                <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--redo-brand)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
-          {AI_CHIPS.map((chip) => {
+          {(aiReasons.length > 0 ? aiReasons : ["영감을 받아서", "구조가 마음에 들어서", "나중에 참고하려고"]).map((chip) => {
             const selected = selectedChips.has(chip);
             return (
               <button
@@ -661,9 +705,7 @@ function Step2Screen({
                   paddingRight: 14,
                   borderRadius: "var(--radius-chip)",
                   background: selected ? "var(--redo-brand-light)" : "var(--redo-bg-secondary)",
-                  border: selected
-                    ? "1px solid var(--redo-brand-mid)"
-                    : "0.5px solid var(--redo-border)",
+                  border: selected ? "1px solid var(--redo-brand-mid)" : "0.5px solid var(--redo-border)",
                   color: selected ? "var(--redo-context-text)" : "var(--redo-text-secondary)",
                   fontSize: "var(--text-caption)",
                   fontWeight: selected ? "var(--font-weight-medium)" : "var(--font-weight-regular)",
@@ -673,6 +715,7 @@ function Step2Screen({
                   transition: "all 150ms ease",
                   WebkitTapHighlightColor: "transparent",
                   flexShrink: 0,
+                  minHeight: 40,
                 }}
               >
                 {chip}
@@ -749,18 +792,17 @@ function Step2Screen({
 
 // ─── Step 3: 첫 실행 (swipe demo) ─────────────────────────────────────────────
 
-interface SavedCardData {
-  title: string;
-  reason: string;
-  chips: string[];
-}
-
 interface Step3Props {
   savedCard: SavedCardData;
+  demoCards?: SavedCardData[]; // 건너뛰기 시 데모 카드 덱
   onCTA: () => void;
 }
 
-function Step3Screen({ savedCard, onCTA }: Step3Props) {
+function Step3Screen({ savedCard, demoCards, onCTA }: Step3Props) {
+  // 데모 모드: 여러 카드를 순서대로 스와이프
+  const cards = demoCards && demoCards.length > 0 ? demoCards : [savedCard];
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const currentCard = cards[Math.min(currentIdx, cards.length - 1)];
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [swipePhase, setSwipePhase] = useState<"idle" | "exit-left" | "exit-right">("idle");
@@ -833,13 +875,22 @@ function Step3Screen({ savedCard, onCTA }: Step3Props) {
   };
 
   const triggerCompletion = (dir: "exit-left" | "exit-right") => {
-    setSwiped(true);
     setSwipePhase(dir);
     setDragX(0);
-    setTimeout(() => {
-      setCompletionVisible(true);
-      setTimeout(() => setCtaVisible(true), 2000);
-    }, 320);
+    // 데모 카드가 여러 장이면 다음 카드로
+    if (cards.length > 1 && currentIdx < cards.length - 1) {
+      setTimeout(() => {
+        setCurrentIdx((i) => i + 1);
+        setSwipePhase("idle");
+        setDragX(0);
+      }, 280);
+    } else {
+      setSwiped(true);
+      setTimeout(() => {
+        setCompletionVisible(true);
+        setTimeout(() => setCtaVisible(true), 2000);
+      }, 320);
+    }
   };
 
   return (
@@ -950,7 +1001,7 @@ function Step3Screen({ savedCard, onCTA }: Step3Props) {
                 flexDirection: "column",
               }}
             >
-              {/* Thumbnail */}
+              {/* Thumbnail — 실제 이미지 or 플레이스홀더 */}
               <div
                 style={{
                   height: 120,
@@ -960,51 +1011,36 @@ function Step3Screen({ savedCard, onCTA }: Step3Props) {
                   overflow: "hidden",
                 }}
               >
-                {/* Grid pattern */}
-                <svg
-                  style={{ position: "absolute", inset: 0, opacity: 0.12 }}
-                  width="100%"
-                  height="100%"
-                >
-                  <defs>
-                    <pattern id="ob-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-                      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="white" strokeWidth="0.5" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#ob-grid)" />
-                </svg>
-
-                {/* Centered icon */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "column",
-                    gap: 6,
-                  }}
-                >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
-                    <path d="M3 8h18M8 3v5" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
-                    <circle cx="9" cy="13" r="2" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
-                    <path d="M13 11h5M13 15h5" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                  <p
-                    style={{
-                      fontSize: "var(--text-micro)",
-                      fontWeight: "var(--font-weight-regular)",
-                      color: "rgba(255,255,255,0.65)",
-                      fontFamily: FONT,
-                      margin: 0,
-                      lineHeight: 1,
-                    }}
-                  >
-                    방금 저장한 레퍼런스
-                  </p>
-                </div>
+                {currentCard.image ? (
+                  <img
+                    src={currentCard.image}
+                    alt={currentCard.title}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <>
+                    {/* Grid pattern */}
+                    <svg style={{ position: "absolute", inset: 0, opacity: 0.12 }} width="100%" height="100%">
+                      <defs>
+                        <pattern id="ob-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="white" strokeWidth="0.5" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#ob-grid)" />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
+                        <path d="M3 8h18M8 3v5" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
+                        <circle cx="9" cy="13" r="2" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
+                        <path d="M13 11h5M13 15h5" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                      <p style={{ fontSize: "var(--text-micro)", color: "rgba(255,255,255,0.65)", fontFamily: FONT, margin: 0, lineHeight: 1 }}>
+                        방금 저장한 레퍼런스
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {/* Skip tint */}
                 <div
@@ -1107,12 +1143,12 @@ function Step3Screen({ savedCard, onCTA }: Step3Props) {
                     overflow: "hidden",
                   }}
                 >
-                  {savedCard.title}
+                  {currentCard.title}
                 </p>
 
-                {savedCard.chips.length > 0 && (
+                {currentCard.chips.length > 0 && (
                   <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
-                    {savedCard.chips.slice(0, 2).map((chip) => (
+                    {currentCard.chips.slice(0, 2).map((chip) => (
                       <span
                         key={chip}
                         style={{
@@ -1171,7 +1207,7 @@ function Step3Screen({ savedCard, onCTA }: Step3Props) {
                       overflow: "hidden",
                     }}
                   >
-                    {savedCard.reason}
+                    {currentCard.reason}
                   </p>
                 </div>
               </div>
@@ -1422,201 +1458,347 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
 // ─── Platform Connection Screen ────────────────────────────────────────────────
 
+const PLATFORM_INFO: Record<string, {
+  steps: string[];
+  portalUrl: string;
+  portalLabel: string;
+  tokenPlaceholder: string;
+  tokenHint: string;
+}> = {
+  pinterest: {
+    steps: [
+      "Pinterest 개발자 포털에서 앱 등록",
+      "Access Token 발급 (boards:read, pins:read 권한 필요)",
+    ],
+    portalUrl: "https://developers.pinterest.com/",
+    portalLabel: "Pinterest 개발자 포털 열기",
+    tokenPlaceholder: "Access Token 붙여넣기",
+    tokenHint: "pina_ 로 시작하는 토큰",
+  },
+  notion: {
+    steps: [
+      "Notion 통합(Integration) 페이지에서 통합 생성",
+      "Internal Integration Token 복사 후 붙여넣기",
+    ],
+    portalUrl: "https://www.notion.so/my-integrations",
+    portalLabel: "Notion 통합 설정 열기",
+    tokenPlaceholder: "ntn_**** 토큰 붙여넣기",
+    tokenHint: "ntn_ 또는 secret_ 로 시작하는 토큰",
+  },
+  instagram: {
+    steps: [
+      "Meta 개발자 포털에서 Instagram Basic Display API 앱 설정",
+      "사용자 토큰 생성 후 붙여넣기",
+    ],
+    portalUrl: "https://developers.facebook.com/",
+    portalLabel: "Meta 개발자 포털 열기",
+    tokenPlaceholder: "Access Token 붙여넣기",
+    tokenHint: "Instagram Graph API 액세스 토큰",
+  },
+};
+
+// OAuth client IDs (set in .env as VITE_PINTEREST_CLIENT_ID, VITE_NOTION_CLIENT_ID, VITE_INSTAGRAM_APP_ID)
+function getPlatformClientId(platformId: string): string {
+  const env = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env;
+  if (platformId === "pinterest") return env.VITE_PINTEREST_CLIENT_ID ?? "";
+  if (platformId === "notion") return env.VITE_NOTION_CLIENT_ID ?? "";
+  if (platformId === "instagram") return env.VITE_INSTAGRAM_APP_ID ?? "";
+  return "";
+}
+
+function buildOAuthUrl(platformId: string, clientId: string, redirectUri: string): string {
+  const enc = encodeURIComponent(redirectUri);
+  if (platformId === "pinterest") {
+    return `https://www.pinterest.com/oauth/?client_id=${clientId}&redirect_uri=${enc}&response_type=code&scope=boards:read,pins:read`;
+  }
+  if (platformId === "notion") {
+    return `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&redirect_uri=${enc}&response_type=code&owner=user`;
+  }
+  if (platformId === "instagram") {
+    return `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${enc}&scope=user_media&response_type=code`;
+  }
+  return "";
+}
+
+type PlatformStatus = "idle" | "connecting" | "done" | "error";
+
 function PlatformScreen({
-  selectedPlatforms,
-  onToggle,
   onConnect,
   onSkip,
+  onImportCards,
 }: {
-  selectedPlatforms: Set<string>;
-  onToggle: (id: string) => void;
   onConnect: () => void;
   onSkip: () => void;
+  onImportCards?: (cards: ImportedPlatformCard[]) => void;
 }) {
-  const hasSelection = selectedPlatforms.size > 0;
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [platformStatus, setPlatformStatus] = useState<Record<string, PlatformStatus>>({});
+  const [tokenValues, setTokenValues] = useState<Record<string, string>>({});
+  const [importCounts, setImportCounts] = useState<Record<string, number>>({});
+  const popupRefs = useRef<Record<string, Window | null>>({});
+
+  const hasAnyConnected = Object.values(platformStatus).some((s) => s === "done");
+
+  // Core import: calls Supabase Edge Function with token
+  const doImport = useCallback(async (platformId: string, token: string) => {
+    setPlatformStatus((prev) => ({ ...prev, [platformId]: "connecting" }));
+    try {
+      if (!supabase) {
+        // Supabase 미설정 — 데모 시뮬레이션
+        await new Promise((r) => setTimeout(r, 1500));
+        const mockCount = Math.floor(Math.random() * 18) + 5;
+        setImportCounts((prev) => ({ ...prev, [platformId]: mockCount }));
+        setPlatformStatus((prev) => ({ ...prev, [platformId]: "done" }));
+        return;
+      }
+
+      // supabase.functions.invoke → CORS 자동 처리 + auth 헤더 포함
+      const { data, error } = await supabase.functions.invoke("platform-import", {
+        body: { platform: platformId, token },
+      });
+
+      if (error) throw new Error(error.message);
+
+      const result = data as { success: boolean; cards?: ImportedPlatformCard[]; error?: string };
+      if (result.success && Array.isArray(result.cards)) {
+        setImportCounts((prev) => ({ ...prev, [platformId]: result.cards!.length }));
+        setPlatformStatus((prev) => ({ ...prev, [platformId]: "done" }));
+        onImportCards?.(result.cards!);
+      } else {
+        throw new Error(result.error ?? "연결 실패");
+      }
+    } catch (err) {
+      console.error("[platform-import]", err);
+      setPlatformStatus((prev) => ({ ...prev, [platformId]: "error" }));
+    }
+  }, [onImportCards]);
+
+  // OAuth popup flow
+  const startOAuthPopup = useCallback((platformId: string) => {
+    const env = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env;
+    const supabaseUrl = env.VITE_SUPABASE_URL ?? "";
+    const clientId = getPlatformClientId(platformId);
+    const redirectUri = `${supabaseUrl}/functions/v1/oauth-callback?platform=${platformId}`;
+    const authUrl = buildOAuthUrl(platformId, clientId, redirectUri);
+
+    setPlatformStatus((prev) => ({ ...prev, [platformId]: "connecting" }));
+
+    const popup = window.open(authUrl, `${platformId}-oauth`, "width=600,height=700,scrollbars=yes,resizable=yes");
+    popupRefs.current[platformId] = popup;
+
+    const handleMessage = (event: MessageEvent) => {
+      const d = event.data as Record<string, unknown>;
+      if (!d || d.platform !== platformId) return;
+
+      if (d.type === "oauth_success" && typeof d.token === "string") {
+        window.removeEventListener("message", handleMessage);
+        setExpandedPlatform(null);
+        doImport(platformId, d.token);
+      } else if (d.type === "oauth_error") {
+        window.removeEventListener("message", handleMessage);
+        setPlatformStatus((prev) => ({ ...prev, [platformId]: "error" }));
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    // Fallback: if popup closed without sending a message
+    const interval = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(interval);
+        window.removeEventListener("message", handleMessage);
+        setPlatformStatus((prev) => {
+          if (prev[platformId] === "connecting") return { ...prev, [platformId]: "idle" };
+          return prev;
+        });
+      }
+    }, 600);
+  }, [doImport]);
+
+  // Decide flow on button click
+  const handleConnectClick = useCallback((platformId: string) => {
+    const clientId = getPlatformClientId(platformId);
+    if (clientId) {
+      // OAuth popup
+      startOAuthPopup(platformId);
+    } else {
+      // Token input fallback
+      setExpandedPlatform((prev) => prev === platformId ? null : platformId);
+    }
+  }, [startOAuthPopup]);
+
+  // Token submit (fallback path)
+  const connectWithToken = useCallback((platformId: string) => {
+    const token = (tokenValues[platformId] ?? "").trim();
+    if (!token) return;
+    setExpandedPlatform(null);
+    doImport(platformId, token);
+  }, [tokenValues, doImport]);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        padding: "28px 16px 32px",
-        overflow: "hidden",
-      }}
-    >
-      <p
-        style={{
-          fontSize: "var(--text-context-label)",
-          fontWeight: "var(--font-weight-regular)",
-          color: "var(--redo-brand-mid)",
-          fontFamily: FONT,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          margin: 0,
-          marginBottom: 10,
-          lineHeight: 1.4,
-        }}
-      >
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "28px 16px 32px", overflowY: "auto" }}>
+      <style>{`@keyframes platform-spin { to { transform: rotate(360deg); } }`}</style>
+
+      <p style={{ fontSize: 11, fontWeight: 600, color: "var(--redo-brand-mid)", fontFamily: FONT, letterSpacing: "0.08em", textTransform: "uppercase", margin: 0, marginBottom: 10 }}>
         로그인 완료
       </p>
-
-      <p
-        style={{
-          fontSize: 20,
-          fontWeight: "var(--font-weight-medium)",
-          color: "var(--redo-text-primary)",
-          fontFamily: FONT,
-          margin: 0,
-          marginBottom: 8,
-          lineHeight: 1.3,
-        }}
-      >
+      <p style={{ fontSize: 20, fontWeight: 600, color: "var(--redo-text-primary)", fontFamily: FONT, margin: 0, marginBottom: 8, lineHeight: 1.3 }}>
         어디에 저장하고 있어요?
       </p>
-      <p
-        style={{
-          fontSize: 13,
-          fontWeight: "var(--font-weight-regular)",
-          color: "var(--redo-text-secondary)",
-          fontFamily: FONT,
-          margin: 0,
-          marginBottom: 28,
-          lineHeight: 1.6,
-        }}
-      >
-        연결하면 기존 레퍼런스를 바로 가져올 수 있어요.
+      <p style={{ fontSize: 13, color: "var(--redo-text-secondary)", fontFamily: FONT, margin: 0, marginBottom: 24, lineHeight: 1.6 }}>
+        연결하면 기존 레퍼런스를 한 번에 가져올 수 있어요.
       </p>
 
-      {/* Platform cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {PLATFORMS.map((p) => {
-          const selected = selectedPlatforms.has(p.id);
+          const status = platformStatus[p.id] ?? "idle";
+          const isExpanded = expandedPlatform === p.id;
+          const token = tokenValues[p.id] ?? "";
+          const info = PLATFORM_INFO[p.id];
+          const count = importCounts[p.id] ?? 0;
+          const hasOAuth = !!getPlatformClientId(p.id);
+
           return (
-            <button
+            <div
               key={p.id}
-              onClick={() => onToggle(p.id)}
               style={{
-                height: 72,
-                borderRadius: "var(--radius-card)",
-                background: selected ? "var(--redo-brand-light)" : "var(--redo-bg-primary)",
-                border: selected
+                borderRadius: 14,
+                background: status === "done" ? "var(--redo-brand-light)" : "var(--redo-bg-primary)",
+                border: status === "done"
+                  ? "1.5px solid var(--redo-brand)"
+                  : status === "error"
+                  ? "1.5px solid var(--redo-danger)"
+                  : isExpanded
                   ? "1.5px solid var(--redo-brand)"
                   : "0.5px solid var(--redo-border)",
-                display: "flex",
-                alignItems: "center",
-                paddingLeft: 16,
-                paddingRight: 16,
-                gap: 14,
-                cursor: "pointer",
-                textAlign: "left",
-                transition: "all 160ms ease",
-                WebkitTapHighlightColor: "transparent",
-                boxShadow: selected ? "0 0 0 1px var(--redo-brand-mid)" : "none",
+                overflow: "hidden",
+                transition: "border 200ms ease",
               }}
             >
-              {/* Icon */}
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: selected ? "#fff" : "var(--redo-bg-secondary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "background 160ms ease",
-                }}
-              >
-                {p.icon}
-              </div>
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", padding: "14px", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: status === "done" ? "#fff" : "var(--redo-bg-secondary)",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  {status === "connecting" ? (
+                    <div style={{
+                      width: 20, height: 20, borderRadius: "50%",
+                      border: "2.5px solid var(--redo-brand)", borderTopColor: "transparent",
+                      animation: "platform-spin 0.75s linear infinite",
+                    }} />
+                  ) : p.icon}
+                </div>
 
-              {/* Text */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-                <p
-                  style={{
-                    fontSize: "var(--text-body)",
-                    fontWeight: "var(--font-weight-medium)",
-                    color: selected ? "var(--redo-brand-dark)" : "var(--redo-text-primary)",
-                    fontFamily: FONT,
-                    margin: 0,
-                    lineHeight: 1.3,
-                    transition: "color 160ms ease",
-                  }}
-                >
-                  {p.name}
-                </p>
-                <p
-                  style={{
-                    fontSize: "var(--text-caption)",
-                    fontWeight: "var(--font-weight-regular)",
-                    color: selected ? "var(--redo-context-label)" : "var(--redo-text-secondary)",
-                    fontFamily: FONT,
-                    margin: 0,
-                    lineHeight: 1.3,
-                    transition: "color 160ms ease",
-                  }}
-                >
-                  {p.desc}
-                </p>
-              </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: status === "done" ? "var(--redo-brand-dark)" : "var(--redo-text-primary)", fontFamily: FONT, margin: 0, lineHeight: 1.3 }}>
+                    {p.name}
+                  </p>
+                  <p style={{
+                    fontSize: 12,
+                    color: status === "error" ? "var(--redo-danger)" : status === "done" ? "var(--redo-context-label)" : status === "connecting" ? "var(--redo-text-tertiary)" : "var(--redo-text-secondary)",
+                    fontFamily: FONT, margin: "3px 0 0", lineHeight: 1.4,
+                  }}>
+                    {status === "done"
+                      ? `${count}개 레퍼런스를 가져왔어요 ✓`
+                      : status === "connecting"
+                      ? "연결 중..."
+                      : status === "error"
+                      ? "연결에 실패했어요. 다시 시도해 주세요"
+                      : p.desc}
+                  </p>
+                </div>
 
-              {/* Checkmark */}
-              <div
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  background: selected ? "var(--redo-brand)" : "transparent",
-                  border: selected ? "none" : "1.5px solid var(--redo-border)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 160ms ease",
-                }}
-              >
-                {selected && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M5 13l4 4L19 7"
-                      stroke="#fff"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                {(status === "idle" || status === "error") && (
+                  <button
+                    onClick={() => status === "error" ? handleConnectClick(p.id) : handleConnectClick(p.id)}
+                    style={{
+                      height: 30, paddingLeft: 13, paddingRight: 13, borderRadius: 8,
+                      fontSize: 12, fontWeight: 600,
+                      color: status === "error" ? "var(--redo-danger)" : "var(--redo-brand)",
+                      background: status === "error" ? "rgba(220,53,69,0.08)" : "var(--redo-brand-light)",
+                      border: "none", cursor: "pointer", fontFamily: FONT, flexShrink: 0, whiteSpace: "nowrap",
+                    }}
+                  >
+                    {status === "error" ? "다시 시도" : hasOAuth ? "연결하기" : isExpanded ? "닫기" : "연결하기"}
+                  </button>
+                )}
+                {status === "done" && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="var(--redo-brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </div>
-            </button>
+
+              {/* Token input (shown only if no OAuth, card expanded) */}
+              {isExpanded && !hasOAuth && (
+                <div style={{ padding: "4px 14px 16px", borderTop: "0.5px solid var(--redo-border)" }}>
+                  <div style={{ marginTop: 12, marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {info.steps.map((step, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{
+                          width: 18, height: 18, borderRadius: "50%", background: "var(--redo-brand)",
+                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#fff" }}>{i + 1}</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: "var(--redo-text-secondary)", fontFamily: FONT, margin: 0, lineHeight: 1.5 }}>{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <a href={info.portalUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--redo-brand)", fontFamily: FONT, textDecoration: "none", marginBottom: 14 }}>
+                    {info.portalLabel}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </a>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      value={token}
+                      onChange={(e) => setTokenValues((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                      placeholder={info.tokenPlaceholder}
+                      onKeyDown={(e) => { if (e.key === "Enter") connectWithToken(p.id); }}
+                      style={{
+                        flex: 1, height: 40, borderRadius: 9, border: "0.5px solid var(--redo-border)",
+                        background: "var(--redo-bg-secondary)", paddingLeft: 11, paddingRight: 11,
+                        fontSize: 12, color: "var(--redo-text-primary)", fontFamily: FONT, outline: "none", minWidth: 0,
+                      }}
+                    />
+                    <button onClick={() => connectWithToken(p.id)} disabled={!token.trim()}
+                      style={{
+                        height: 40, paddingLeft: 16, paddingRight: 16, borderRadius: 9,
+                        background: token.trim() ? "var(--redo-brand)" : "var(--redo-bg-secondary)",
+                        border: "none", cursor: token.trim() ? "pointer" : "default",
+                        fontSize: 12, fontWeight: 700, color: token.trim() ? "#fff" : "var(--redo-text-tertiary)",
+                        fontFamily: FONT, flexShrink: 0, transition: "all 150ms ease",
+                      }}>
+                      연결
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 10, color: "var(--redo-text-tertiary)", fontFamily: FONT, margin: "6px 0 0", lineHeight: 1.4 }}>
+                    {info.tokenHint}
+                  </p>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
 
-      {/* CTAs */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24, flexShrink: 0 }}>
         <CTAButton
-          label={hasSelection ? `${selectedPlatforms.size}개 연결하기` : "연결하기"}
+          label={hasAnyConnected ? "가져오기 완료" : "연결하기"}
           onClick={onConnect}
-          disabled={!hasSelection}
+          disabled={!hasAnyConnected}
         />
-        <button
-          onClick={onSkip}
+        <button onClick={onSkip}
           style={{
-            width: "100%",
-            height: 44,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "var(--text-body)",
-            fontWeight: "var(--font-weight-regular)",
-            color: "var(--redo-text-secondary)",
-            fontFamily: FONT,
-            lineHeight: 1,
+            width: "100%", height: 44, background: "none", border: "none", cursor: "pointer",
+            fontSize: 14, color: "var(--redo-text-secondary)", fontFamily: FONT, lineHeight: 1,
             WebkitTapHighlightColor: "transparent",
-          }}
-        >
+          }}>
           나중에 연결할게요
         </button>
       </div>
@@ -1628,12 +1810,29 @@ function PlatformScreen({
 
 type Phase = "step1" | "step2" | "step3" | "login" | "platform";
 
+interface ImportedPlatformCard {
+  title: string;
+  image: string;
+  source: string;
+  savedReason: string;
+  chips: string[];
+}
+
 interface OnboardingScreenProps {
   onComplete: () => void;
   forceMode?: boolean;
+  onSaveCard?: (data: {
+    title: string;
+    image?: string | null;
+    chips?: string[];
+    savedReason?: string;
+    source?: string;
+    urlValue?: string;
+  }) => void;
+  onImportCards?: (cards: ImportedPlatformCard[]) => void;
 }
 
-export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProps) {
+export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCards }: OnboardingScreenProps) {
   const [phase, setPhase] = useState<Phase>("step1");
   const [slideKey, setSlideKey] = useState(0);
 
@@ -1642,6 +1841,10 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
   const [savedReason, setSavedReason] = useState("");
   const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set());
   const [thumbnailVisible, setThumbnailVisible] = useState(false);
+  const [ogImage, setOgImage] = useState<string | null>(null);
+  const [aiReasons, setAiReasons] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const urlFetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Saved card for Step 3 demo
   const [savedCard, setSavedCard] = useState<SavedCardData>({
@@ -1650,22 +1853,59 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
     chips: [],
   });
 
-  // Platform state
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set());
+  // Step 2 건너뛰기 여부 (→ Step 3에서 데모 카드 표시)
+  const [skipped, setSkipped] = useState(false);
+
+  // Platform state (managed inside PlatformScreen — kept here for compatibility)
+  const [selectedPlatforms] = useState<Set<string>>(new Set());
 
   const advanceTo = (next: Phase) => {
     setSlideKey((k) => k + 1);
     setPhase(next);
   };
 
-  const handleUrlChange = (val: string) => {
+  const handleUrlChange = useCallback((val: string) => {
     setUrlInput(val);
     if (val.length > 5) {
-      setTimeout(() => setThumbnailVisible(true), 500);
+      setThumbnailVisible(true);
     } else {
       setThumbnailVisible(false);
+      setOgImage(null);
+      setAiReasons([]);
+      return;
     }
-  };
+    // 디바운스 fetch
+    if (urlFetchDebounceRef.current) clearTimeout(urlFetchDebounceRef.current);
+    urlFetchDebounceRef.current = setTimeout(async () => {
+      try {
+        const isValid = /^https?:\/\/.+\..+/.test(val.trim());
+        if (!isValid) return;
+        setAiLoading(true);
+        const meta = await fetchLinkMetadata(val.trim());
+        if (meta.imageUrl) setOgImage(meta.imageUrl);
+        // Supabase Edge Function으로 AI 분석
+        const supabaseUrl = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+          const res = await fetch(`${supabaseUrl}/functions/v1/analyze-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: val.trim(), title: meta.title, description: meta.description }),
+            signal: AbortSignal.timeout(15000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.analysis?.suggested_reasons?.length > 0) {
+              setAiReasons(data.analysis.suggested_reasons.slice(0, 3));
+            }
+          }
+        }
+      } catch {
+        // 조용히 실패
+      } finally {
+        setAiLoading(false);
+      }
+    }, 800);
+  }, []);
 
   const handleToggleChip = (chip: string) => {
     setSelectedChips((prev) => {
@@ -1680,13 +1920,22 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
     const chips = Array.from(selectedChips);
     const domain = urlInput.replace(/https?:\/\//, "").split("/")[0];
     setSavedCard({
-      title:
-        urlInput.length > 5
-          ? `${domain} 레퍼런스`
-          : "Dribbble — iOS 타이포그래피 레퍼런스",
-      reason: savedReason || "타이포 시스템 참고용으로 저장했어요",
-      chips: chips.length > 0 ? chips : ["타이포 참고"],
+      title: urlInput.length > 5 ? `${domain} 레퍼런스` : "Dribbble — iOS 타이포그래피 레퍼런스",
+      reason: savedReason || Array.from(selectedChips).join(" · ") || "나중에 참고하려고 저장했어요",
+      chips: chips.length > 0 ? chips : ["영감을 받아서"],
+      image: ogImage,
     });
+    // Persist to home feed
+    if (urlInput.length > 5) {
+      onSaveCard?.({
+        title: urlInput.length > 5 ? `${domain} 레퍼런스` : "Dribbble — iOS 타이포그래피 레퍼런스",
+        image: ogImage,
+        chips,
+        savedReason: savedReason || Array.from(selectedChips).join(" · ") || undefined,
+        source: domain || "온보딩",
+        urlValue: urlInput,
+      });
+    }
     advanceTo("step3");
   };
 
@@ -1707,14 +1956,8 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
     onComplete();
   };
 
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  // togglePlatform is handled inside PlatformScreen now
+  void selectedPlatforms; // suppress unused warning
 
   // Progress bar pct per phase (only for steps 1–3)
   const progressPct =
@@ -1771,22 +2014,28 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
             savedReason={savedReason}
             onReasonChange={setSavedReason}
             onSave={handleSave}
-            onSkip={() => advanceTo("step3")}
+            onSkip={() => { setSkipped(true); advanceTo("step3"); }}
+            ogImage={ogImage}
+            aiReasons={aiReasons}
+            aiLoading={aiLoading}
           />
         )}
 
         {phase === "step3" && (
-          <Step3Screen savedCard={savedCard} onCTA={handleStep3CTA} />
+          <Step3Screen
+            savedCard={savedCard}
+            onCTA={handleStep3CTA}
+            demoCards={skipped ? DEMO_CARDS : undefined}
+          />
         )}
 
         {phase === "login" && <LoginScreen onLogin={handleLogin} />}
 
         {phase === "platform" && (
           <PlatformScreen
-            selectedPlatforms={selectedPlatforms}
-            onToggle={togglePlatform}
             onConnect={handlePlatformDone}
             onSkip={handlePlatformDone}
+            onImportCards={onImportCards}
           />
         )}
       </div>

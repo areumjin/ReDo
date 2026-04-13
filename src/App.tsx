@@ -60,6 +60,7 @@ import { ExecutionMemoSheet } from "./components/ExecutionMemoSheet";
 import { CardEditSheet } from "./components/CardEditSheet";
 import { AIRecommendScreen } from "./screens/AIRecommendScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
@@ -119,6 +120,7 @@ export default function App() {
   const [sheetInitialTitle, setSheetInitialTitle] = useState<string | undefined>(undefined);
   const [aiRecommendVisible, setAiRecommendVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [importVisible, setImportVisible] = useState(false);
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -228,8 +230,8 @@ export default function App() {
         try { new URL(trimmed); } catch { return; }
 
         showToast({
-          variant: "later",
-          sourceChip: "클립보드에 URL이 있어요! 저장하기",
+          variant: "info",
+          sourceChip: "클립보드에 URL이 있어요! 탭해서 저장하기",
         });
 
         // We show a custom toast message — override with a click handler
@@ -297,6 +299,19 @@ export default function App() {
 
   // Cards state — mutable copy of ALL_CARDS for in-session edits
   const [cards, setCards] = useState<CardData[]>([...ALL_CARDS]);
+
+  // ── Folder colors — maps project tag name to a hex color ─────────────────
+  const [folderColors, setFolderColors] = useState<Record<string, string>>({
+    "영감": "#6A70FF",
+    "작업": "#22C55E",
+    "학습": "#F59E0B",
+    "아이디어": "#EC4899",
+    "기타": "#94A3B8",
+  });
+
+  const handleFolderColorChange = useCallback((name: string, color: string) => {
+    setFolderColors((prev) => ({ ...prev, [name]: color }));
+  }, []);
 
   // ── Existing project tags from current cards ──────────────────────────────
   const existingProjects = Array.from(new Set(cards.map((c) => c.projectTag)));
@@ -591,6 +606,50 @@ export default function App() {
             key={onboardingKey}
             onComplete={handleOnboardingComplete}
             forceMode={forceOnboarding}
+            onSaveCard={({ title, image, chips, savedReason, source, urlValue }) => {
+              const newCard: CardData = {
+                id: Date.now(),
+                title: title || "새 레퍼런스",
+                image: image || "",
+                projectTag: "영감",
+                savedReason: savedReason || "",
+                chips: chips || [],
+                source: source || "온보딩",
+                statusDot: "미실행",
+                daysAgo: "방금 전",
+                processingStatus: "processing",
+              };
+              setCards((prev) => [newCard, ...prev]);
+              // Supabase 저장 (로그인된 경우)
+              if (supabase && currentUserId) {
+                import("./lib/cardService").then(({ saveCard }) => {
+                  saveCard({ ...newCard, urlValue, userId: currentUserId! });
+                });
+              }
+            }}
+            onImportCards={(importedCards) => {
+              const now = Date.now();
+              const newCards: CardData[] = importedCards.map((c, i) => ({
+                id: now + i,
+                title: c.title || "가져온 레퍼런스",
+                image: c.image || "",
+                projectTag: "영감",
+                savedReason: c.savedReason || "",
+                chips: c.chips || [],
+                source: c.source || "",
+                statusDot: "미실행",
+                daysAgo: "방금 전",
+              }));
+              setCards((prev) => [...newCards, ...prev]);
+              // Supabase 일괄 저장
+              if (supabase && currentUserId) {
+                import("./lib/cardService").then(({ saveCard }) => {
+                  newCards.forEach((card) =>
+                    saveCard({ ...card, urlValue: "", userId: currentUserId! })
+                  );
+                });
+              }
+            }}
           />
         )}
 
@@ -636,7 +695,6 @@ export default function App() {
                     onExecute={handleExecuteCard}
                     laterCardIds={laterCardIds}
                     onLater={handleLaterCard}
-                    onAIStripPress={() => setAiRecommendVisible(true)}
                     onProfilePress={() => setSettingsVisible(true)}
                     cards={cards}
                     userName={userName ?? undefined}
@@ -661,6 +719,7 @@ export default function App() {
                   pendingStatus={pendingStatus}
                   executedCardIds={executedCardIds}
                   cards={cards}
+                  folderColors={folderColors}
                 />
               )}
               {activeTab === "기록" && (
@@ -720,6 +779,54 @@ export default function App() {
                 onSignOut={handleSignOut}
                 currentUserId={currentUserId}
                 userName={userName ?? undefined}
+                onImportPress={() => setImportVisible(true)}
+              />
+            </div>
+
+            {/* Import screen — slides in from right (z:66, above settings) */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                transform: importVisible ? "translateX(0)" : "translateX(100%)",
+                transition: importVisible
+                  ? "transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+                  : "transform 250ms cubic-bezier(0.55, 0.0, 1.0, 0.45)",
+                willChange: "transform",
+                pointerEvents: importVisible ? "auto" : "none",
+                zIndex: 66,
+              }}
+            >
+              <ImportScreen
+                onBack={() => setImportVisible(false)}
+                existingProjects={existingProjects}
+                onImport={(importedCards, projectTag) => {
+                  const now = Date.now();
+                  const newCards = importedCards.map((c, i) => ({
+                    id: now + i,
+                    title: c.title || "가져온 레퍼런스",
+                    image: c.image || "",
+                    projectTag,
+                    savedReason: c.savedReason || "",
+                    chips: c.chips || [],
+                    source: c.source || "",
+                    statusDot: "미실행" as const,
+                    daysAgo: "방금 전",
+                  }));
+                  setCards((prev) => [...newCards, ...prev]);
+                  // Supabase 일괄 저장
+                  if (supabase && currentUserId) {
+                    import("./lib/cardService").then(({ saveCard }) => {
+                      newCards.forEach((card) =>
+                        saveCard({
+                          ...card,
+                          urlValue: "",
+                          userId: currentUserId!,
+                        })
+                      );
+                    });
+                  }
+                }}
               />
             </div>
 
@@ -765,6 +872,8 @@ export default function App() {
               initialUrl={sheetInitialUrl}
               initialTitle={sheetInitialTitle}
               existingProjects={existingProjects}
+              folderColors={folderColors}
+              onFolderColorChange={handleFolderColorChange}
             />
 
             {/* Execution memo sheet */}
