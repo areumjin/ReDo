@@ -122,3 +122,14 @@
   min-height: 44px;
   min-width: 44px;
 }
+
+/* === Utility: Shimmer skeleton === */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #F1EFE8 25%, #E8E6DF 50%, #F1EFE8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}

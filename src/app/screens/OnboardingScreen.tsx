@@ -49,8 +49,8 @@ function Step1({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
       >
         <button
           onClick={onSkip}
-          className="absolute right-4"
-          style={{ top: 52, fontSize: 12, color: 'rgba(255,255,255,0.65)' }}
+          className="absolute right-4 flex items-center justify-center"
+          style={{ top: 44, fontSize: 12, color: 'rgba(255,255,255,0.65)', minHeight: 44, padding: '10px 16px' }}
         >
           건너뛰기
         </button>
@@ -168,8 +168,8 @@ function Step2({
       {/* Skip */}
       <button
         onClick={onSkip}
-        className="absolute right-4 z-10"
-        style={{ top: 52, fontSize: 12, color: C.sub }}
+        className="absolute right-4 z-10 flex items-center justify-center"
+        style={{ top: 44, fontSize: 12, color: C.sub, minHeight: 44, padding: '10px 16px' }}
       >
         건너뛰기
       </button>

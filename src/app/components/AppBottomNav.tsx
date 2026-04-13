@@ -5,31 +5,28 @@ interface AppBottomNavProps {
   currentTab: 'home' | 'action'
   onTabChange: (tab: 'home' | 'action') => void
   onFabPress: () => void
+  onDisabledTab: () => void
 }
 
 interface NavItemProps {
   icon: React.ElementType
   label: string
   active?: boolean
-  disabled?: boolean
   onClick?: () => void
 }
 
-function NavItem({ icon: Icon, label, active, disabled, onClick }: NavItemProps) {
+function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         'flex flex-col items-center justify-center gap-0.5 h-full w-full transition-colors duration-150',
-        active && 'text-brand',
-        !active && !disabled && 'text-text-tertiary',
-        disabled && 'text-text-disabled cursor-not-allowed opacity-40'
+        active ? 'text-brand' : 'text-text-tertiary'
       )}
     >
       <Icon className="size-[22px]" strokeWidth={active ? 2.2 : 1.8} />
       <span className={cn(
-        'text-[10px]',
+        'text-[11px]',
         active ? 'font-semibold' : 'font-medium'
       )}>
         {label}
@@ -38,7 +35,7 @@ function NavItem({ icon: Icon, label, active, disabled, onClick }: NavItemProps)
   )
 }
 
-export default function AppBottomNav({ currentTab, onTabChange, onFabPress }: AppBottomNavProps) {
+export default function AppBottomNav({ currentTab, onTabChange, onFabPress, onDisabledTab }: AppBottomNavProps) {
   return (
     <nav
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full bg-card border-t border-border"
@@ -53,11 +50,11 @@ export default function AppBottomNav({ currentTab, onTabChange, onFabPress }: Ap
           onClick={() => onTabChange('home')}
         />
 
-        {/* 보관 — Phase 2 */}
+        {/* 보관 — Phase 2: tap shows toast */}
         <NavItem
           icon={Bookmark}
           label="보관"
-          disabled
+          onClick={onDisabledTab}
         />
 
         {/* FAB */}
@@ -80,11 +77,11 @@ export default function AppBottomNav({ currentTab, onTabChange, onFabPress }: Ap
           onClick={() => onTabChange('action')}
         />
 
-        {/* 기록 — Phase 2 */}
+        {/* 기록 — Phase 2: tap shows toast */}
         <NavItem
           icon={Clock}
           label="기록"
-          disabled
+          onClick={onDisabledTab}
         />
       </div>
 
