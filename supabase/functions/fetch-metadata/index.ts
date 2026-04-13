@@ -10,7 +10,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 최신 Android Chrome UA
 const BROWSER_UA =
   "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36";
 
@@ -22,21 +21,36 @@ const BROWSER_HEADERS = {
   "Sec-Fetch-Dest": "document",
   "Sec-Fetch-Mode": "navigate",
   "Sec-Fetch-Site": "none",
-  "Upgrade-Insecure-Requests": "1",
 };
+
+// ─── HTML 엔티티 디코딩 ────────────────────────────────────────────────────────
+
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\\u0026/g, "&")
+    .replace(/\\\//g, "/");
+}
+
+// ─── regex 첫 번째 캡처 그룹 추출 (g 플래그 없이) ──────────────────────────────
+
+function firstMatch(html: string, pattern: RegExp): string {
+  const m = pattern.exec(html);
+  return m ? decodeHtmlEntities(m[1] ?? "") : "";
+}
 
 // ─── HTML → OG 태그 파싱 ──────────────────────────────────────────────────────
 
 function getMeta(html: string, ...props: string[]): string {
   for (const prop of props) {
-    const patterns = [
-      new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"'>{]+)["']`, "i"),
-      new RegExp(`<meta[^>]+content=["']([^"'>{]+)["'][^>]+(?:property|name)=["']${prop}["']`, "i"),
-    ];
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m?.[1]?.trim()) return m[1].trim();
-    }
+    const v =
+      firstMatch(html, new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"'>{]+)["']`, "i")) ||
+      firstMatch(html, new RegExp(`<meta[^>]+content=["']([^"'>{]+)["'][^>]+(?:property|name)=["']${prop}["']`, "i"));
+    if (v) return v;
   }
   return "";
 }
@@ -44,8 +58,7 @@ function getMeta(html: string, ...props: string[]): string {
 function extractOG(html: string, baseUrl: string) {
   const title =
     getMeta(html, "og:title", "twitter:title") ||
-    html.match(/<title[^>]*>([^<]{1,200})<\/title>/i)?.[1]?.trim() ||
-    "";
+    firstMatch(html, /<title[^>]*>([^<]{1,200})<\/title>/i);
   const description = getMeta(html, "og:description", "twitter:description", "description");
   const siteName = getMeta(html, "og:site_name");
   let image = getMeta(html, "og:image", "og:image:secure_url", "twitter:image");
@@ -57,21 +70,29 @@ function extractOG(html: string, baseUrl: string) {
   return { title, description, image, siteName };
 }
 
-// ─── 이미지 → base64 ──────────────────────────────────────────────────────────
+// ─── 이미지 URL → base64 (작은 이미지만, 최대 600KB) ─────────────────────────
 
 async function imageToBase64(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": BROWSER_UA, "Referer": "https://www.instagram.com/" },
-      signal: AbortSignal.timeout(12000),
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Referer": "https://www.instagram.com/",
+      },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
 
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
-    const buf = await res.arrayBuffer();
-    const bytes = new Uint8Array(buf);
 
-    // Deno btoa는 Uint8Array를 직접 못 받으므로 binary string으로 변환
+    // 큰 이미지는 base64 건너뜀 (600KB 초과)
+    const contentLength = res.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 600_000) return null;
+
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > 600_000) return null;
+
+    const bytes = new Uint8Array(buf);
     let binary = "";
     const chunk = 8192;
     for (let i = 0; i < bytes.length; i += chunk) {
@@ -83,21 +104,59 @@ async function imageToBase64(url: string): Promise<string | null> {
   }
 }
 
-// ─── Instagram /embed/ ────────────────────────────────────────────────────────
+// ─── Instagram embed 파싱 ─────────────────────────────────────────────────────
+
+function extractInstagramImage(html: string): string {
+  // 1. JSON-LD 또는 인라인 데이터에서 display_url 추출
+  const displayUrl = firstMatch(html, /"display_url"\s*:\s*"([^"]+)"/i);
+  if (displayUrl) return displayUrl;
+
+  // 2. __additionalData / shared_data JSON에서 이미지 추출
+  const jsonData = firstMatch(html, /window\.__additionalDataLoaded\('[^']*',\s*(\{.{0,5000}\})\)/i);
+  if (jsonData) {
+    const imgInJson = firstMatch(jsonData, /"display_url"\s*:\s*"([^"]+)"/i);
+    if (imgInJson) return imgInJson;
+  }
+
+  // 3. <img> 태그 중 cdninstagram 도메인이고 프로필 사진(t51.2885-19)이 아닌 것
+  // Instagram 포스트 이미지는 t51.29350 또는 t51.2885-15 등
+  const imgPattern = /src="(https:\/\/[^"]*(?:cdninstagram|fbcdn)[^"]*(?:t51\.(?:2885-1[^9]|293|29[0-9])[^"]*)[^"]*)"/i;
+  const m = imgPattern.exec(html);
+  if (m?.[1]) return decodeHtmlEntities(m[1]);
+
+  // 4. 모든 cdninstagram 이미지 중 가장 큰 것 (프로필 제외)
+  const allImgs: string[] = [];
+  const globalPattern = /src="(https:\/\/[^"]*cdninstagram[^"]*)"/gi;
+  let match;
+  while ((match = globalPattern.exec(html)) !== null) {
+    const url = decodeHtmlEntities(match[1]);
+    // 프로필 사진(t51.2885-19, 150x150) 제외
+    if (!url.includes("t51.2885-19") && !url.includes("s150x150")) {
+      allImgs.push(url);
+    }
+  }
+  if (allImgs.length > 0) return allImgs[0];
+
+  // 5. og:image 폴백
+  const og = getMeta(html, "og:image", "twitter:image");
+  return og;
+}
+
+// ─── Instagram 전용 핸들러 ────────────────────────────────────────────────────
 
 async function fetchInstagram(url: string) {
-  // shortcode 추출
-  const m = url.match(/instagram\.com\/(?:p|reel|tv|stories\/[^/]+)\/([A-Za-z0-9_-]+)/);
+  const m = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   if (!m) throw new Error("Instagram URL을 파싱할 수 없어요.");
 
   const code = m[1];
-  const embedUrl = `https://www.instagram.com/p/${code}/embed/captioned/`;
 
+  // embed/captioned/ 엔드포인트 시도
+  const embedUrl = `https://www.instagram.com/p/${code}/embed/captioned/`;
   const res = await fetch(embedUrl, {
     headers: {
       ...BROWSER_HEADERS,
       "Referer": "https://www.instagram.com/",
-      "Sec-Fetch-Site": "same-origin",
+      "Cookie": "", // 쿠키 없이 공개 게시물 접근
     },
     redirect: "follow",
     signal: AbortSignal.timeout(12000),
@@ -105,35 +164,25 @@ async function fetchInstagram(url: string) {
 
   const html = await res.text();
 
-  // 이미지 URL 추출 시도 (여러 패턴)
-  const imagePatterns = [
-    /src="(https:\/\/[^"]*(?:cdninstagram|fbcdn|instagram)[^"]*\.(?:jpg|webp|png)[^"]*?)"/gi,
-    /"display_url":"([^"]+)"/i,
-    /background-image:url\('?(https:\/\/[^'")]+)'?\)/i,
-  ];
+  const imageUrl = extractInstagramImage(html);
 
-  let imageUrl = "";
-  for (const pattern of imagePatterns) {
-    const imgMatch = html.match(pattern);
-    if (imgMatch) {
-      // src 패턴은 그룹 1, 나머지는 그룹 1
-      const rawUrl = imgMatch[1] ?? imgMatch[0];
-      // JSON 이스케이프 해제
-      imageUrl = rawUrl.replace(/\\u0026/g, "&").replace(/\\/g, "");
-      if (imageUrl.startsWith("http")) break;
-    }
-  }
+  // username
+  const username =
+    firstMatch(html, /class="[^"]*UsernameText[^"]*"[^>]*>([^<]+)/i) ||
+    firstMatch(html, /"username"\s*:\s*"([^"]+)"/i);
 
-  // username, caption
-  const usernameMatch = html.match(/class="[^"]*UsernameText[^"]*"[^>]*>([^<]+)/i) ||
-    html.match(/@([A-Za-z0-9_.]{1,30})/);
-  const username = usernameMatch?.[1]?.trim() ?? "";
+  // caption
+  const caption =
+    firstMatch(html, /"edge_media_to_caption".*?"text"\s*:\s*"([^"]{0,300})"/is) ||
+    firstMatch(html, /class="[^"]*Caption[^"]*"[^>]*>[\s\S]{0,20}<span[^>]*>([\s\S]{0,200}?)<\/span>/i)
+      .replace(/<[^>]+>/g, "").trim();
 
-  const captionMatch = html.match(/class="[^"]*Caption[^"]*"[\s\S]*?<span[^>]*>([\s\S]{0,200}?)<\/span>/i);
-  const caption = captionMatch?.[1]?.replace(/<[^>]+>/g, "")?.trim() ?? "";
+  // 게시물 타입 판별
+  const isReel = url.includes("/reel/") || html.includes('"product_type":"clips"');
+  const postType = isReel ? "릴스" : "게시물";
 
   return {
-    title: username ? `@${username}의 Instagram 게시물` : "Instagram 게시물",
+    title: username ? `@${username}의 Instagram ${postType}` : `Instagram ${postType}`,
     description: caption || "Instagram 공개 게시물",
     imageUrl: imageUrl || null,
     siteName: "Instagram",
@@ -151,11 +200,10 @@ async function fetchPinterest(url: string) {
   const html = await res.text();
   const og = extractOG(html, url);
 
-  // Pinterest OG image가 없으면 JSON-LD에서 시도
+  // Pinterest OG image 없으면 JSON-LD에서 시도
   let imageUrl = og.image;
   if (!imageUrl) {
-    const jsonLd = html.match(/"image":\s*"(https:[^"]+)"/i);
-    if (jsonLd?.[1]) imageUrl = jsonLd[1];
+    imageUrl = firstMatch(html, /"image"\s*:\s*"(https:[^"]+)"/i);
   }
 
   return {
@@ -197,7 +245,7 @@ serve(async (req) => {
     const { url } = await req.json() as { url: string };
     if (!url || typeof url !== "string") {
       return new Response(
-        JSON.stringify({ error: "url 파라미터가 필요해요." }),
+        JSON.stringify({ error: "url이 필요해요." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -207,13 +255,17 @@ serve(async (req) => {
 
     if (host === "instagram.com" || host === "instagr.am") {
       result = await fetchInstagram(url);
-    } else if (host === "pinterest.com" || host === "pin.it" || host.endsWith("pinterest.co.kr")) {
+    } else if (
+      host === "pinterest.com" ||
+      host === "pin.it" ||
+      host.endsWith("pinterest.co.kr")
+    ) {
       result = await fetchPinterest(url);
     } else {
       result = await fetchGeneral(url);
     }
 
-    // 이미지 base64 변환 (클라이언트 CORS 우회)
+    // 이미지 base64 변환 시도 (실패하면 imageUrl만 반환)
     let imageBase64: string | null = null;
     if (result.imageUrl) {
       imageBase64 = await imageToBase64(result.imageUrl);
@@ -223,8 +275,8 @@ serve(async (req) => {
       JSON.stringify({
         title: result.title,
         description: result.description,
-        imageBase64,           // data:image/...;base64,... 형식
-        imageUrl: result.imageUrl,  // 원본 URL (백업)
+        imageBase64,              // data:image/...;base64,... (CORS 완전 우회)
+        imageUrl: result.imageUrl, // 백업 URL (클라이언트에서 직접 로드)
         siteName: result.siteName,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
