@@ -34,7 +34,16 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   const description =
     getMeta(["og:description", "twitter:description", "description"]) || "";
 
-  const imageUrl = getMeta(["og:image", "twitter:image"]) || null;
+  const rawImageUrl = getMeta(["og:image", "twitter:image"]) || null;
+  // 상대 경로 → 절대 URL 변환
+  const imageUrl = rawImageUrl
+    ? rawImageUrl.startsWith("http")
+      ? rawImageUrl
+      : (() => {
+          try { return `${new URL(url).origin}${rawImageUrl.startsWith("/") ? "" : "/"}${rawImageUrl}`; }
+          catch { return null; }
+        })()
+    : null;
 
   const siteName =
     getMeta(["og:site_name"]) ||
