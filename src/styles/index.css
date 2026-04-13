@@ -3,3 +3,14 @@
 @import 'tw-animate-css';
 @import './theme.css';
 @import './base.css';
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: #F8F7F4;
+}
