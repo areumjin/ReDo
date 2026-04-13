@@ -75,30 +75,44 @@ export default function App() {
 
   // ── Auth initialization ───────────────────────────────────────────────────
   useEffect(() => {
+    const goToScreen = (screen: AppScreen) => setAppScreen(screen);
+
     // If supabase is not configured, go directly to onboarding or main
     if (!supabase) {
       if (forceOnboarding || !isAlreadyOnboarded) {
-        setAppScreen("onboarding");
+        goToScreen("onboarding");
       } else {
-        setAppScreen("main");
+        goToScreen("main");
       }
       return;
     }
 
+    // Safety timeout — if auth check hangs for 5s, fall back to login
+    const timeout = setTimeout(() => {
+      setAppScreen((prev) => prev === "loading" ? "login" : prev);
+    }, 5000);
+
     // Check current session
-    getCurrentUser().then((user) => {
-      if (user) {
-        setCurrentUserId(user.id);
-        if (forceOnboarding || !isAlreadyOnboarded) {
-          setAppScreen("onboarding");
+    getCurrentUser()
+      .then((user) => {
+        clearTimeout(timeout);
+        if (user) {
+          setCurrentUserId(user.id);
+          if (forceOnboarding || !isAlreadyOnboarded) {
+            goToScreen("onboarding");
+          } else {
+            goToScreen("main");
+            loadCardsFromSupabase();
+          }
         } else {
-          setAppScreen("main");
-          loadCardsFromSupabase();
+          goToScreen("login");
         }
-      } else {
-        setAppScreen("login");
-      }
-    });
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        // Auth error → show login screen as fallback
+        goToScreen("login");
+      });
 
     // Listen for auth state changes
     const unsubscribe = onAuthStateChange((user) => {
