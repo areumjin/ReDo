@@ -2,6 +2,22 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react
 import { StatusBar } from "../components/StatusBar";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { type CardData } from "../types";
+import { extractColors, type ExtractedColor } from "../lib/colorExtractor";
+
+// ─── Keyframe injection ───────────────────────────────────────────────────────
+
+const DETAIL_STYLE_ID = "redo-detail-keyframes";
+if (typeof document !== "undefined" && !document.getElementById(DETAIL_STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = DETAIL_STYLE_ID;
+  s.textContent = `
+    @keyframes redo-dot-bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(s);
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -101,6 +117,12 @@ export function DetailScreen({
   onEditPress,
 }: DetailScreenProps) {
   // Local executed state REMOVED — derived from global executedCardIds
+  // ── Color palette state ──
+  const [paletteColors, setPaletteColors] = useState<ExtractedColor[]>([]);
+  const [paletteLoading, setPaletteLoading] = useState(false);
+  const [copiedHex, setCopiedHex] = useState<string | null>(null);
+  const [scaledHex, setScaledHex] = useState<string | null>(null);
+
   // ── Parallax & header fade state (using refs to avoid re-renders on scroll) ──
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroImgRef = useRef<HTMLImageElement & HTMLDivElement>(null);
@@ -172,6 +194,23 @@ export function DetailScreen({
 
     return () => el.removeEventListener("scroll", onScroll);
   }, [applyScrollEffects, card?.id]);
+
+  // Extract colors when card image changes
+  useEffect(() => {
+    setPaletteColors([]);
+    setPaletteLoading(false);
+    setCopiedHex(null);
+    if (!card?.image) return;
+
+    let cancelled = false;
+    setPaletteLoading(true);
+    extractColors(card.image).then((colors) => {
+      if (cancelled) return;
+      setPaletteColors(colors);
+      setPaletteLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [card?.image]);
 
   // Related cards logic
   const relatedCards = card
@@ -534,6 +573,105 @@ export function DetailScreen({
               {card.savedReason}
             </p>
           </div>
+
+          {/* ── Color Palette ── */}
+          {card.image && (paletteLoading || paletteColors.length > 0) && (
+            <div
+              style={{
+                background: "var(--redo-bg-secondary, #F8F7F4)",
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: "var(--font-weight-medium)",
+                  color: "var(--redo-context-label)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  margin: 0,
+                  marginBottom: paletteLoading ? 0 : 10,
+                  lineHeight: 1.3,
+                  fontFamily: FONT,
+                }}
+              >
+                컬러 팔레트
+              </p>
+
+              {paletteLoading ? (
+                /* Loading dots */
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "var(--redo-brand)",
+                        display: "inline-block",
+                        animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {paletteColors.map((color) => {
+                    const isScaled = scaledHex === color.hex;
+                    return (
+                      <div
+                        key={color.hex}
+                        style={{
+                          display: "inline-flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 4,
+                          cursor: "pointer",
+                        }}
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(color.hex);
+                            setCopiedHex(color.hex);
+                            setScaledHex(color.hex);
+                            setTimeout(() => setScaledHex(null), 300);
+                            setTimeout(() => setCopiedHex(null), 1500);
+                          } catch {
+                            // clipboard not available
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            background: color.hex,
+                            border: "0.5px solid rgba(0,0,0,0.08)",
+                            transform: isScaled ? "scale(1.2)" : "scale(1)",
+                            transition: "transform 150ms ease",
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: copiedHex === color.hex ? "var(--redo-brand)" : "#888",
+                            fontFamily: "monospace",
+                            lineHeight: 1,
+                            transition: "color 150ms ease",
+                          }}
+                        >
+                          {copiedHex === color.hex ? "복사됨!" : color.hex.toLowerCase()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Keywords */}
           <div style={{ marginBottom: 24 }}>

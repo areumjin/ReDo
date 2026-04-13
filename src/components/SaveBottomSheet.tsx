@@ -11,6 +11,15 @@ const AI_CHIPS = ["타이포 참고", "그리드 구조", "색상 팔레트", "�
 
 type FetchState = "idle" | "loading" | "success" | "error";
 
+interface AIAnalysis {
+  suggested_reasons: string[];
+  keywords: string[];
+  category: string;
+  summary: string;
+}
+
+type AIState = "idle" | "loading" | "done" | "error";
+
 interface OGMeta {
   image: string | null;
   title: string | null;
@@ -109,6 +118,10 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
     @keyframes redo-expandin {
       from { opacity: 0; width: 72px; }
       to   { opacity: 1; width: 148px; }
+    }
+    @keyframes redo-dot-bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
     }
   `;
   document.head.appendChild(s);
@@ -941,6 +954,11 @@ export function SaveBottomSheet({
   const [newProject, setNewProject] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  // AI analysis state
+  const [aiState, setAiState] = useState<AIState>("idle");
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const aiDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const sheetRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
   const dragDeltaRef = useRef(0);
@@ -973,6 +991,9 @@ export function SaveBottomSheet({
       setMemoValue("");
       setNewProject(null);
       setSaved(false);
+      setAiState("idle");
+      setAiAnalysis(null);
+      if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
     }
   }, [visible]);
 
@@ -983,6 +1004,9 @@ export function SaveBottomSheet({
 
     setFetchState("loading");
     setMeta(null);
+
+    // Also trigger AI analysis with debounce
+    triggerAIAnalysis(url);
 
     try {
       const linkMeta = await fetchLinkMetadata(url);
@@ -1011,13 +1035,62 @@ export function SaveBottomSheet({
       setMeta({ image: null, title: null, domain: extractDomain(url) });
       setFetchState("error");
     }
-  }, [memoValue]);
+  }, [memoValue, triggerAIAnalysis]);
+
+  // AI analysis via Supabase Edge Function (debounced 1.2s)
+  const triggerAIAnalysis = useCallback((url: string) => {
+    if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    if (!supabaseUrl) return; // graceful: no Supabase configured
+
+    aiDebounceRef.current = setTimeout(async () => {
+      setAiState("loading");
+      setAiAnalysis(null);
+      try {
+        const endpoint = `${supabaseUrl}/functions/v1/analyze-url`;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (data.analysis) {
+          setAiAnalysis(data.analysis as AIAnalysis);
+
+          // Auto-fill keywords chips
+          const aiKeywords: string[] = data.analysis.keywords ?? [];
+          if (aiKeywords.length > 0) {
+            setSelectedChips((prev) => {
+              const merged = [...new Set([...prev, ...aiKeywords])];
+              return merged.slice(0, 6);
+            });
+          }
+
+          // If OG image came back and meta doesn't have one, apply it
+          if (data.ogImage && meta && !meta.image) {
+            setMeta((prev) => prev ? { ...prev, image: data.ogImage } : prev);
+          }
+        }
+        setAiState("done");
+      } catch (err) {
+        console.warn("AI analysis failed:", err);
+        setAiState("error");
+      }
+    }, 1200);
+  }, [meta]);
 
   const handleClear = () => {
     abortRef.current?.abort();
+    if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
     setUrlValue("");
     setFetchState("idle");
     setMeta(null);
+    setAiState("idle");
+    setAiAnalysis(null);
   };
 
   const toggleChip = (chip: string) => {
@@ -1281,6 +1354,109 @@ export function SaveBottomSheet({
                 왜 저장했어?
               </p>
             </div>
+
+            {/* ── AI Analysis: loading indicator ── */}
+            {aiState === "loading" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginBottom: 10,
+                  animation: "redo-fadein 0.2s ease",
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: "var(--redo-brand)",
+                      display: "inline-block",
+                      animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+                    }}
+                  />
+                ))}
+                <span
+                  style={{
+                    fontSize: "var(--text-micro)",
+                    color: "var(--redo-brand)",
+                    fontFamily: FONT,
+                    fontWeight: "var(--font-weight-regular)",
+                  }}
+                >
+                  AI가 분석 중...
+                </span>
+              </div>
+            )}
+
+            {/* ── AI Analysis: suggested reasons ── */}
+            {aiState === "done" && aiAnalysis && aiAnalysis.suggested_reasons.length > 0 && (
+              <div
+                style={{
+                  marginBottom: 10,
+                  animation: "redo-fadein 0.22s ease",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "var(--font-weight-medium)",
+                    color: "var(--redo-brand)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    margin: 0,
+                    marginBottom: 6,
+                    fontFamily: FONT,
+                    opacity: 0.7,
+                  }}
+                >
+                  AI 추천 이유
+                </p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {aiAnalysis.suggested_reasons.map((reason) => (
+                    <button
+                      key={reason}
+                      onClick={() => {
+                        setMemoValue((prev) =>
+                          prev ? `${prev} ${reason}` : reason
+                        );
+                      }}
+                      style={{
+                        height: 28,
+                        minHeight: 40,
+                        paddingLeft: 10,
+                        paddingRight: 10,
+                        borderRadius: "var(--radius-chip)",
+                        fontSize: "var(--text-micro)",
+                        fontWeight: "var(--font-weight-regular)",
+                        color: "var(--redo-brand)",
+                        background: "var(--redo-brand-light)",
+                        border: "0.5px solid var(--redo-brand-mid)",
+                        cursor: "pointer",
+                        fontFamily: FONT,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        transition: "all 0.15s ease",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                        <path
+                          d="M6 1l1.4 3.6H11l-2.8 2.1 1 3.4L6 8.2 2.8 10l1-3.4L1 4.6h3.6z"
+                          fill="var(--redo-brand)"
+                          opacity="0.8"
+                        />
+                      </svg>
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* AI suggestion chips */}
             <div
