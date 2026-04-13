@@ -1014,47 +1014,8 @@ export function SaveBottomSheet({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  // Fetch link metadata using fetchLinkMetadata util
-  const triggerFetch = useCallback(async (url: string) => {
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
-
-    setFetchState("loading");
-    setMeta(null);
-
-    // Also trigger AI analysis with debounce
-    triggerAIAnalysis(url);
-
-    try {
-      const linkMeta = await fetchLinkMetadata(url);
-      // Map to OGMeta shape for existing ThumbnailPreview component
-      setMeta({
-        image: linkMeta.imageUrl,
-        title: linkMeta.title || null,
-        domain: linkMeta.siteName || extractDomain(url),
-      });
-      setFetchState("success");
-
-      // Auto-fill description (savedReason) if textarea is empty
-      if (linkMeta.description && !memoValue) {
-        setMemoValue(linkMeta.description.slice(0, 120));
-      }
-
-      // Auto-fill AI chips from meta keywords
-      const autoChips = extractChipsFromMeta(linkMeta);
-      if (autoChips.length > 0) {
-        setSelectedChips((prev) => {
-          const merged = [...new Set([...prev, ...autoChips])];
-          return merged.slice(0, 6);
-        });
-      }
-    } catch {
-      setMeta({ image: null, title: null, domain: extractDomain(url) });
-      setFetchState("error");
-    }
-  }, [memoValue, triggerAIAnalysis]);
-
   // AI analysis via Supabase Edge Function (debounced 1.2s)
+  // ⚠️ must be declared BEFORE triggerFetch which references it
   const triggerAIAnalysis = useCallback((url: string) => {
     if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
 
@@ -1099,6 +1060,46 @@ export function SaveBottomSheet({
       }
     }, 1200);
   }, [meta]);
+
+  // Fetch link metadata using fetchLinkMetadata util
+  const triggerFetch = useCallback(async (url: string) => {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    setFetchState("loading");
+    setMeta(null);
+
+    // Also trigger AI analysis with debounce
+    triggerAIAnalysis(url);
+
+    try {
+      const linkMeta = await fetchLinkMetadata(url);
+      // Map to OGMeta shape for existing ThumbnailPreview component
+      setMeta({
+        image: linkMeta.imageUrl,
+        title: linkMeta.title || null,
+        domain: linkMeta.siteName || extractDomain(url),
+      });
+      setFetchState("success");
+
+      // Auto-fill description (savedReason) if textarea is empty
+      if (linkMeta.description && !memoValue) {
+        setMemoValue(linkMeta.description.slice(0, 120));
+      }
+
+      // Auto-fill AI chips from meta keywords
+      const autoChips = extractChipsFromMeta(linkMeta);
+      if (autoChips.length > 0) {
+        setSelectedChips((prev) => {
+          const merged = [...new Set([...prev, ...autoChips])];
+          return merged.slice(0, 6);
+        });
+      }
+    } catch {
+      setMeta({ image: null, title: null, domain: extractDomain(url) });
+      setFetchState("error");
+    }
+  }, [memoValue, triggerAIAnalysis]);
 
   const handleClear = () => {
     abortRef.current?.abort();
