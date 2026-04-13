@@ -48,6 +48,9 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // 배포할 때마다 서비스 워커가 즉시 새 버전으로 교체되도록
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/supabase/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
