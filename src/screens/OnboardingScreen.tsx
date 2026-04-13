@@ -1691,10 +1691,12 @@ export function OnboardingScreen({ onComplete, forceMode }: OnboardingScreenProp
   };
 
   const handleStep3CTA = () => {
+    // 앱 레벨에 별도 로그인 화면이 있으므로 내부 login 단계 생략
+    // localStorage는 항상 저장 (forceOnboarding URL param일 때만 skip)
     if (!forceMode) {
       localStorage.setItem("redo_onboarded", "true");
     }
-    advanceTo("login");
+    advanceTo("platform");
   };
 
   const handleLogin = () => {

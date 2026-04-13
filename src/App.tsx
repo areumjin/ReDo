@@ -511,7 +511,7 @@ export default function App() {
           <OnboardingScreen
             key={onboardingKey}
             onComplete={handleOnboardingComplete}
-            forceMode={true}
+            forceMode={forceOnboarding}
           />
         )}
 
