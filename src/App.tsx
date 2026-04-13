@@ -193,12 +193,10 @@ export default function App() {
   // ── Onboarding handlers ───────────────────────────────────────────────────
   const handleOnboardingComplete = () => {
     setTimeout(() => {
-      if (supabase && !currentUserId) {
-        setAppScreen("login");
-      } else {
-        setAppScreen("main");
-        loadCardsFromSupabase();
-      }
+      // 온보딩 완료 후 항상 메인으로 이동
+      // 로그인된 유저면 Supabase에서 카드 로드, 게스트면 로컬 카드 사용
+      setAppScreen("main");
+      if (currentUserId) loadCardsFromSupabase();
     }, 320);
   };
 
