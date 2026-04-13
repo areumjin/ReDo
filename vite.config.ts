@@ -21,9 +21,11 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         share_target: {
           action: '/save',
           method: 'GET',
+          enctype: 'application/x-www-form-urlencoded',
           params: {
             url: 'url',
             title: 'title',

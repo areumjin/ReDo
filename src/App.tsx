@@ -87,6 +87,12 @@ const isAlreadyOnboarded =
 // ─── PWA Share Target params ──────────────────────────────────────────────────
 const sharedUrl = searchParams.get("url") ?? searchParams.get("text") ?? null;
 const sharedTitle = searchParams.get("title") ?? null;
+const isFromShare = !!(sharedUrl); // 공유 시트로 열렸는지 여부
+
+// URL 파라미터를 즉시 제거 — 뒤로가기 시 바텀시트가 다시 열리지 않도록
+if (sharedUrl) {
+  window.history.replaceState({}, "", "/");
+}
 
 type AppScreen = "loading" | "login" | "onboarding" | "main";
 
@@ -871,6 +877,7 @@ export default function App() {
               onOptimisticSave={handleOptimisticSave}
               initialUrl={sheetInitialUrl}
               initialTitle={sheetInitialTitle}
+              isFromShare={!!(sheetInitialUrl && isFromShare)}
               existingProjects={existingProjects}
               folderColors={folderColors}
               onFolderColorChange={handleFolderColorChange}

@@ -1008,6 +1008,7 @@ interface SaveBottomSheetProps {
   }) => void;
   initialUrl?: string;
   initialTitle?: string;
+  isFromShare?: boolean;
   existingProjects?: string[];
   folderColors?: Record<string, string>;
   onFolderColorChange?: (name: string, color: string) => void;
@@ -1020,6 +1021,7 @@ export function SaveBottomSheet({
   onOptimisticSave,
   initialUrl,
   initialTitle,
+  isFromShare = false,
   existingProjects,
   folderColors,
   onFolderColorChange,
@@ -1405,7 +1407,24 @@ export function SaveBottomSheet({
               fontFamily: FONT,
             }}
           >
-            레퍼런스 저장
+            {isFromShare ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                레퍼런스 저장
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--redo-brand)",
+                    background: "rgba(106,112,255,0.1)",
+                    borderRadius: 6,
+                    padding: "2px 7px",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  공유로 추가됨
+                </span>
+              </span>
+            ) : "레퍼런스 저장"}
           </p>
           <button
             onClick={onClose}
