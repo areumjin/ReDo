@@ -128,6 +128,9 @@ export default function App() {
   // ── Cards loading state ───────────────────────────────────────────────────
   const [cardsLoading, setCardsLoading] = useState(false);
 
+  // ── Toast — declared early so useEffects below can reference showToast ───
+  const { showToast, ToastNode } = useToast();
+
   // ── Auth initialization ───────────────────────────────────────────────────
   useEffect(() => {
     const goToScreen = (screen: AppScreen) => setAppScreen(screen);
@@ -300,9 +303,6 @@ export default function App() {
     setEditTargetCard(card);
     setEditSheetOpen(true);
   }, []);
-
-  // Toast
-  const { showToast, ToastNode } = useToast();
 
   // "나중에" — temporarily dimmed card IDs (auto-cleared after 3 s)
   const [laterCardIds, setLaterCardIds] = useState<Set<number>>(new Set());
