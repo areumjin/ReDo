@@ -141,6 +141,19 @@ export default function App() {
   // ── Cards loading state ───────────────────────────────────────────────────
   const [cardsLoading, setCardsLoading] = useState(false);
 
+  // ── SW 자동 업데이트: 새 버전 배포 시 자동 리로드 ────────────────────────
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handleControllerChange = () => {
+      // 새 서비스 워커가 활성화되면 페이지 새로고침 (무한루프 방지: 한 번만)
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
+  }, []);
+
   // ── Toast — declared early so useEffects below can reference showToast ───
   const { showToast, ToastNode } = useToast();
 
