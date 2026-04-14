@@ -99,8 +99,132 @@ async function fetchAlloriginsMeta(url: string): Promise<LinkMetadata> {
   };
 }
 
+// ─── Supabase Edge Function (서버 사이드 fetch) ────────────────────────────────
+
+async function fetchViaEdgeFunction(url: string): Promise<LinkMetadata | null> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!supabaseUrl || !supabaseKey) return null;
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/fetch-metadata`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      title?: string;
+      description?: string;
+      imageBase64?: string | null;
+      imageUrl?: string | null;
+      siteName?: string;
+      error?: string;
+    };
+    if (data.error) return null;
+
+    // JS/CSS URL이 아닌 실제 이미지인지 검증
+    const rawImage = data.imageBase64 ?? data.imageUrl ?? null;
+    const imageUrl = rawImage && (
+      rawImage.startsWith("data:image/") ||
+      /scontent[^.]*\.(cdninstagram|fbcdn)\./.test(rawImage) ||
+      /\.(jpg|jpeg|png|webp|gif)(\?|#|$)/i.test(rawImage)
+    ) ? rawImage : null;
+
+    return {
+      title: data.title ?? "",
+      description: data.description ?? "",
+      imageUrl,
+      siteName: data.siteName ?? "",
+      favicon: null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── 소셜 플랫폼 감지 + 브랜드 메타 즉시 반환 ───────────────────────────────────
+
+interface SocialPlatform {
+  name: string;
+  color: string;       // 브랜드 컬러 (hex)
+  label: string;       // 게시물 유형 라벨
+  emoji: string;
+}
+
+function detectSocialPlatform(url: string): SocialPlatform | null {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const host = hostname.replace("www.", "");
+
+    if (host === "instagram.com" || host === "instagr.am") {
+      const isReel = pathname.includes("/reel/");
+      const isStory = pathname.includes("/stories/");
+      return {
+        name: "Instagram",
+        color: "#E1306C",
+        label: isReel ? "Instagram 릴스" : isStory ? "Instagram 스토리" : "Instagram 게시물",
+        emoji: "📸",
+      };
+    }
+    if (host === "pinterest.com" || host === "pin.it" || host === "pinterest.co.kr") {
+      return { name: "Pinterest", color: "#E60023", label: "Pinterest 핀", emoji: "📌" };
+    }
+    if (host === "tiktok.com" || host === "vm.tiktok.com") {
+      return { name: "TikTok", color: "#010101", label: "TikTok 영상", emoji: "🎵" };
+    }
+    if (host === "twitter.com" || host === "x.com" || host === "t.co") {
+      return { name: "X (Twitter)", color: "#000000", label: "X 게시물", emoji: "🐦" };
+    }
+    if (host === "threads.net") {
+      return { name: "Threads", color: "#101010", label: "Threads 게시물", emoji: "🧵" };
+    }
+    if (host === "behance.net") {
+      return { name: "Behance", color: "#1769FF", label: "Behance 프로젝트", emoji: "🎨" };
+    }
+    if (host === "dribbble.com") {
+      return { name: "Dribbble", color: "#EA4C89", label: "Dribbble 샷", emoji: "🏀" };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 // ─── 메인 함수 ────────────────────────────────────────────────────────────────
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+  // 0. 소셜 플랫폼 → Edge Function으로 서버 사이드 fetch 시도
+  const social = detectSocialPlatform(url);
+  if (social) {
+    // Edge Function으로 실제 이미지 가져오기 시도
+    const edgeResult = await fetchViaEdgeFunction(url);
+    if (edgeResult && (edgeResult.imageUrl || edgeResult.title)) {
+      return {
+        ...edgeResult,
+        siteName: edgeResult.siteName || social.name,
+        // 이미지가 없으면 소셜 플랫폼 색상 정보 첨부
+        ...(!edgeResult.imageUrl && {
+          _socialColor: social.color,
+          _socialEmoji: social.emoji,
+        }),
+      } as LinkMetadata & { _socialColor?: string; _socialEmoji?: string };
+    }
+    // Edge Function 실패 → 브랜드 플레이스홀더 폴백
+    return {
+      title: social.label,
+      description: `${social.name}에서 공유된 콘텐츠`,
+      imageUrl: null,
+      siteName: social.name,
+      favicon: null,
+      _socialColor: social.color,
+      _socialEmoji: social.emoji,
+    } as LinkMetadata & { _socialColor: string; _socialEmoji: string };
+  }
+
   // 1. YouTube → 공식 oEmbed
   const videoId = getYouTubeVideoId(url);
   if (videoId) {

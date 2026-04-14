@@ -85,8 +85,17 @@ const isAlreadyOnboarded =
   !forceOnboarding && localStorage.getItem("redo_onboarded") === "true";
 
 // ─── PWA Share Target params ──────────────────────────────────────────────────
+// Level 1 (GET): URL 파라미터로 전달 (구형 브라우저 호환)
 const sharedUrl = searchParams.get("url") ?? searchParams.get("text") ?? null;
 const sharedTitle = searchParams.get("title") ?? null;
+// Level 2 (POST): 서비스 워커가 캐시에 저장 후 ?fromShare=1 로 리다이렉트
+const fromShareCache = searchParams.get("fromShare") === "1";
+const isFromShare = !!(sharedUrl) || fromShareCache;
+
+// URL 파라미터를 즉시 제거 — 뒤로가기 시 바텀시트가 다시 열리지 않도록
+if (sharedUrl || fromShareCache) {
+  window.history.replaceState({}, "", "/");
+}
 
 type AppScreen = "loading" | "login" | "onboarding" | "main";
 
@@ -121,6 +130,7 @@ export default function App() {
   const [aiRecommendVisible, setAiRecommendVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [importVisible, setImportVisible] = useState(false);
+  const [sheetInitialImageUrl, setSheetInitialImageUrl] = useState<string | undefined>(undefined);
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -130,6 +140,19 @@ export default function App() {
 
   // ── Cards loading state ───────────────────────────────────────────────────
   const [cardsLoading, setCardsLoading] = useState(false);
+
+  // ── SW 자동 업데이트: 새 버전 배포 시 자동 리로드 ────────────────────────
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handleControllerChange = () => {
+      // 새 서비스 워커가 활성화되면 페이지 새로고침 (무한루프 방지: 한 번만)
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
+  }, []);
 
   // ── Toast — declared early so useEffects below can reference showToast ───
   const { showToast, ToastNode } = useToast();
@@ -205,12 +228,53 @@ export default function App() {
     }
   }, []);
 
-  // ── PWA Share Target — open sheet with shared URL ─────────────────────────
+  // ── PWA Share Target — open sheet with shared data ────────────────────────
   useEffect(() => {
-    if (sharedUrl && appScreen === "main") {
+    if (appScreen !== "main") return;
+
+    // Level 1: GET 방식 (URL 파라미터)
+    if (sharedUrl) {
       setSheetInitialUrl(sharedUrl);
       setSheetInitialTitle(sharedTitle ?? undefined);
       setSheetOpen(true);
+      return;
+    }
+
+    // Level 2: POST 방식 (서비스 워커가 캐시에 저장한 데이터)
+    if (fromShareCache) {
+      (async () => {
+        try {
+          const cache = await caches.open("redo-share-v1");
+
+          // 메타데이터 읽기
+          const metaRes = await cache.match("/redo-share-meta");
+          if (!metaRes) return;
+          const meta = await metaRes.json() as {
+            title: string; text: string; url: string; hasImage: boolean;
+          };
+
+          setSheetInitialUrl(meta.url || meta.text || "");
+          setSheetInitialTitle(meta.title || "");
+
+          // 이미지 파일 읽기
+          if (meta.hasImage) {
+            const imgRes = await cache.match("/redo-share-image");
+            if (imgRes) {
+              const blob = await imgRes.blob();
+              const objectUrl = URL.createObjectURL(blob);
+              setSheetInitialImageUrl(objectUrl);
+            }
+          }
+
+          // 캐시 정리
+          await cache.delete("/redo-share-meta");
+          await cache.delete("/redo-share-image");
+        } catch (err) {
+          console.error("[App] Share cache read error:", err);
+        } finally {
+          setSheetOpen(true);
+        }
+      })();
     }
   // Only run once when main screen becomes available
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -866,11 +930,18 @@ export default function App() {
                 setSheetOpen(false);
                 setSheetInitialUrl(undefined);
                 setSheetInitialTitle(undefined);
+                // object URL 해제 (메모리 누수 방지)
+                if (sheetInitialImageUrl) {
+                  URL.revokeObjectURL(sheetInitialImageUrl);
+                  setSheetInitialImageUrl(undefined);
+                }
               }}
               onSave={handleSave}
               onOptimisticSave={handleOptimisticSave}
               initialUrl={sheetInitialUrl}
               initialTitle={sheetInitialTitle}
+              initialImageUrl={sheetInitialImageUrl}
+              isFromShare={isFromShare}
               existingProjects={existingProjects}
               folderColors={folderColors}
               onFolderColorChange={handleFolderColorChange}
