@@ -1961,7 +1961,7 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
   void selectedPlatforms; // suppress unused warning
 
   // Progress bar pct per phase (only for steps 1–3)
-  const { isMobile, isDesktop } = useBreakpoint();
+  const { isMobile } = useBreakpoint();
 
   const progressPct =
     phase === "step1" ? 33 : phase === "step2" ? 66 : phase === "step3" ? 100 : 100;
@@ -2027,95 +2027,26 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
     </div>
   );
 
-  // ── Desktop: brand panel (left 50%) + steps (right 50%) ──────────────────
-  if (isDesktop) {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          fontFamily: FONT,
-          overflow: "hidden",
-        }}
-      >
-        {/* Left brand panel */}
-        <div
-          style={{
-            flex: 1,
-            background: "var(--redo-brand)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 20,
-            padding: 40,
-          }}
-        >
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              background: "rgba(255,255,255,0.15)",
-              borderRadius: 18,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-1px" }}>Re</span>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 10 }}>
-              ReDo
-            </p>
-            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", margin: 0, lineHeight: 1.6, maxWidth: 280 }}>
-              레퍼런스를 저장하고 분석해서<br />디자인 실력을 키워요
-            </p>
-          </div>
-        </div>
-
-        {/* Right onboarding steps */}
-        <div
-          style={{
-            flex: 1,
-            background: "var(--redo-bg-primary)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ background: "var(--redo-bg-primary)", flexShrink: 0 }}>
-            <StatusBar />
-          </div>
-          {phaseContent}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Tablet: centered card layout ─────────────────────────────────────────
+  // ── 태블릿/데스크탑: 폰 콘텐츠 그대로 가운데 ────────────────────────────
   if (!isMobile) {
     return (
       <div
         style={{
           width: "100%",
           height: "100%",
-          background: "var(--redo-bg-secondary)",
+          background: "var(--redo-bg-primary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: FONT,
+          overflow: "hidden",
         }}
       >
         <div
           style={{
-            width: 480,
-            maxWidth: "90vw",
-            height: "85vh",
-            background: "var(--redo-bg-primary)",
-            borderRadius: 20,
-            boxShadow: "0 8px 40px rgba(0,0,0,0.10)",
+            width: "100%",
+            maxWidth: 430,
+            height: "100%",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
