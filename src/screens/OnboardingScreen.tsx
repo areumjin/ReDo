@@ -1049,7 +1049,7 @@ function Step3Screen({ savedCard, demoCards, onCTA }: Step3Props) {
               {/* Thumbnail — 실제 이미지 or 플레이스홀더 */}
               <div
                 style={{
-                  height: 120,
+                  height: 200,
                   flexShrink: 0,
                   background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
                   position: "relative",
