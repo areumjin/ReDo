@@ -1,0 +1,67 @@
+import { type CardData } from "../types";
+
+// ─── 앱 초기 시드 카드 — 첫 실행부터 데이터 있는 상태로 시작 ─────────────────
+// OnboardingScreen Step3 데모 + App 초기 피드에 공통 사용
+
+export const SEED_CARDS: CardData[] = [
+  {
+    id: 101,
+    contentType: "font",
+    title: "Helvetica Neue 타이포 그리드",
+    savedReason: "헤드라인 폰트 방향 잡는 데 쓸 것",
+    projectTag: "브랜딩 과제",
+    image: "https://picsum.photos/seed/font1/400/300",
+    statusDot: "미실행",
+    daysAgo: "방금",
+    chips: [],
+    source: "seed",
+  },
+  {
+    id: 102,
+    contentType: "color",
+    title: "모노크롬 팔레트 레퍼런스",
+    savedReason: "포스터 배경색 참고용",
+    projectTag: "졸업전시",
+    image: "https://picsum.photos/seed/color1/400/500",
+    statusDot: "미실행",
+    daysAgo: "방금",
+    chips: [],
+    source: "seed",
+  },
+  {
+    id: 103,
+    contentType: "layout",
+    title: "카드 UI 레이아웃 패턴",
+    savedReason: "앱 홈화면 그리드 구조 참고",
+    projectTag: "개인 프로젝트",
+    image: "https://picsum.photos/seed/layout1/400/400",
+    statusDot: "미실행",
+    daysAgo: "방금",
+    chips: [],
+    source: "seed",
+  },
+  {
+    id: 104,
+    contentType: "article",
+    title: "브랜딩 케이스스터디 — 무인양품",
+    savedReason: "BI 작업 전 톤앤매너 참고",
+    projectTag: "브랜딩 과제",
+    image: "https://picsum.photos/seed/article1/400/300",
+    statusDot: "미실행",
+    daysAgo: "방금",
+    chips: [],
+    source: "seed",
+  },
+  {
+    id: 105,
+    contentType: "mood",
+    title: "미니멀 포스터 무드",
+    savedReason: "전체 분위기 방향 잡으려고",
+    projectTag: "졸업전시",
+    image: "https://picsum.photos/seed/mood1/400/600",
+    statusDot: "미실행",
+    daysAgo: "방금",
+    chips: [],
+    source: "seed",
+  },
+];

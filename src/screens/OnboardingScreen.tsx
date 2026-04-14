@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { fetchLinkMetadata } from "../utils/fetchMetadata";
 import { supabase } from "../lib/supabase";
 import { useBreakpoint } from "../hooks/useBreakpoint";
+import { SEED_CARDS } from "../data/seedCards";
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 
@@ -57,44 +58,14 @@ interface SavedCardData {
   isDemo?: boolean; // 건너뛰기 시 Redo 데모 카드
 }
 
-// 온보딩 데모 카드 (체험 / 건너뛰기 시)
-const DEMO_CARDS: SavedCardData[] = [
-  {
-    title: "Lottie Animation — 모바일 UI 인터랙션",
-    reason: "로딩 애니메이션 레퍼런스로 저장",
-    chips: ["모션", "UI"],
-    image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&q=80",
-    isDemo: true,
-  },
-  {
-    title: "Apple HIG — 타이포그래피 시스템 가이드",
-    reason: "타이포 위계 구조 참고용",
-    chips: ["타이포", "시스템"],
-    image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80",
-    isDemo: true,
-  },
-  {
-    title: "Linear App — 대시보드 UI 패턴",
-    reason: "대시보드 레이아웃 구성 참고",
-    chips: ["레이아웃", "SaaS"],
-    image: "https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800&q=80",
-    isDemo: true,
-  },
-  {
-    title: "Stripe — 브랜드 컬러 팔레트",
-    reason: "파스텔 + 딥 컬러 조합 영감",
-    chips: ["컬러", "브랜딩"],
-    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-    isDemo: true,
-  },
-  {
-    title: "Notion — 정보 구조화 레이아웃",
-    reason: "콘텐츠 배치 아이디어 참고",
-    chips: ["레이아웃", "정보구조"],
-    image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80",
-    isDemo: true,
-  },
-];
+// SEED_CARDS → Step3 데모 형식으로 변환
+const DEMO_CARDS: SavedCardData[] = SEED_CARDS.map((c) => ({
+  title: c.title,
+  reason: c.savedReason,
+  chips: c.chips,
+  image: c.image,
+  isDemo: true,
+}));
 
 // ─── Platform Data ─────────────────────────────────────────────────────────────
 

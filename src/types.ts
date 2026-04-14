@@ -4,6 +4,7 @@ export interface CardData {
   id: number;
   image: string;
   title: string;
+  contentType?: "font" | "color" | "layout" | "article" | "mood" | "ui" | "other";
   projectTag: string;
   statusDot: "미실행" | "실행완료" | "보관중";
   savedReason: string;

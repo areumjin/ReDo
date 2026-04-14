@@ -64,6 +64,7 @@ import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
+import { SEED_CARDS } from "./data/seedCards";
 import { getCurrentUser, onAuthStateChange, signOut } from "./lib/auth";
 import { getCards, saveCard, deleteCard } from "./lib/cardService";
 import { supabase } from "./lib/supabase";
@@ -382,7 +383,7 @@ export default function App() {
     await signOut();
     setCurrentUserId(null);
     setCurrentUserEmail(null);
-    setCards([...ALL_CARDS]);
+    setCards([...SEED_CARDS, ...ALL_CARDS]);
     setAppScreen("login");
   };
 
@@ -395,8 +396,8 @@ export default function App() {
       })()
     : null;
 
-  // Cards state — mutable copy of ALL_CARDS for in-session edits
-  const [cards, setCards] = useState<CardData[]>([...ALL_CARDS]);
+  // Cards state — SEED_CARDS로 시작 (첫 실행부터 데이터 있는 상태)
+  const [cards, setCards] = useState<CardData[]>([...SEED_CARDS, ...ALL_CARDS]);
 
   // ── Folder colors — maps project tag name to a hex color ─────────────────
   const [folderColors, setFolderColors] = useState<Record<string, string>>({
