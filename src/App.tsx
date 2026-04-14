@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect, Component, type ErrorInfo, type ReactNode } from "react";
+import { AppProvider, type ActiveTab, type AppContextValue } from "./context/AppContext";
+import { detectContentType } from "./utils/importParser";
 
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 export class AppErrorBoundary extends Component<
@@ -62,6 +64,7 @@ import { AIRecommendScreen } from "./screens/AIRecommendScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { WorkbenchScreen } from "./screens/WorkbenchScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -71,13 +74,14 @@ import { supabase } from "./lib/supabase";
 import { useBreakpoint } from "./hooks/useBreakpoint";
 import { SideNav } from "./components/SideNav";
 
-type ActiveTab = "홈" | "보관" | "활용" | "기록";
+// ActiveTab은 AppContext에서 import (단일 정의)
 
 const BACK_LABELS: Record<ActiveTab, string> = {
   홈: "홈",
   보관: "보관함",
   활용: "활용",
   기록: "기록",
+  작업대: "작업대",
 };
 
 // ─── Onboarding gating ────────────────────────────────────────────────────────
@@ -586,6 +590,8 @@ export default function App() {
           statusDot: "미실행",
           daysAgo: "방금 전",
           processingStatus: "processing",
+          contentType: detectContentType(urlValue),
+          urlValue: urlValue || "",
         };
         setCards((prev) => [newCard, ...prev]);
         setPendingStatus("confirmed");
@@ -677,6 +683,28 @@ export default function App() {
     );
   }
 
+  // ── AppContext value (PROMPT 6) — 화면 렌더 전 구성 ────────────────────────
+  const contextValue: AppContextValue = {
+    cards,
+    setCards,
+    executedCardIds,
+    setExecutedCardIds,
+    currentTab: activeTab,
+    selectedCard,
+    isSaveSheetOpen: sheetOpen,
+    isMemoSheetOpen: memoSheetOpen,
+    memoTargetCard,
+    setCurrentTab: handleTabChange,
+    setSelectedCard,
+    setIsSaveSheetOpen: setSheetOpen,
+    setIsMemoSheetOpen: setMemoSheetOpen,
+    setMemoTargetCard,
+    handleExecuteCard,
+    handleMemoComplete,
+    handleMemoSkip,
+    showToast,
+  };
+
   // ── 반응형 루트 레이아웃 ─────────────────────────────────────────────────
   const rootStyle: React.CSSProperties = isMobile
     ? {
@@ -706,6 +734,7 @@ export default function App() {
 
   if (!isMobile && isFullscreenScreen) {
     return (
+      <AppProvider value={contextValue}>
       <div style={{ width: "100%", height: "100dvh", overflow: "hidden" }}>
         {appScreen === "login" && (
           <LoginScreen
@@ -764,10 +793,12 @@ export default function App() {
         )}
         {ToastNode}
       </div>
+      </AppProvider>
     );
   }
 
   return (
+    <AppProvider value={contextValue}>
     <div style={rootStyle}>
       {/* 태블릿/데스크탑: SideNav — 메인 화면에서만 표시 */}
       {!isMobile && appScreen === "main" && (
@@ -932,6 +963,13 @@ export default function App() {
                   onFabPress={() => setSheetOpen(true)}
                   onCardTap={handleOpenDetail}
                   userName={userName ?? undefined}
+                />
+              )}
+              {activeTab === "작업대" && (
+                <WorkbenchScreen
+                  onCardTap={handleOpenDetail}
+                  onFabPress={() => setSheetOpen(true)}
+                  onTabChange={handleTabChange}
                 />
               )}
             </div>
@@ -1144,5 +1182,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </AppProvider>
   );
 }

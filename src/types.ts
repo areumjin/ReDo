@@ -4,7 +4,8 @@ export interface CardData {
   id: number;
   image: string;
   title: string;
-  contentType?: "font" | "color" | "layout" | "article" | "mood" | "ui" | "other";
+  contentType?: "font" | "color" | "layout" | "article" | "mood" | "general";
+  urlValue?: string; // 저장 시 원본 URL (Figma 내보내기, 중복 감지 등에 사용)
   projectTag: string;
   statusDot: "미실행" | "실행완료" | "보관중";
   savedReason: string;

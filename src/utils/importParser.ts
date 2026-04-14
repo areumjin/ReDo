@@ -84,7 +84,7 @@ export function parsePinterestCSV(text: string): ParsedCard[] {
         urlValue: url,
       } satisfies ParsedCard;
     })
-    .filter((c): c is ParsedCard => c !== null);
+    .filter((c) => c !== null) as ParsedCard[];
 }
 
 // ─── Notion CSV ────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export function parseNotionCSV(text: string): ParsedCard[] {
         urlValue: url,
       } satisfies ParsedCard;
     })
-    .filter((c): c is ParsedCard => c !== null);
+    .filter((c) => c !== null) as ParsedCard[];
 }
 
 // ─── Generic CSV ────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ export function parseGenericCSV(text: string): ParsedCard[] {
         urlValue: url,
       } satisfies ParsedCard;
     })
-    .filter((c): c is ParsedCard => c !== null);
+    .filter((c) => c !== null) as ParsedCard[];
 }
 
 // ─── JSON ───────────────────────────────────────────────────────────────────────
@@ -245,7 +245,50 @@ export function parseJSON(text: string): ParsedCard[] {
         urlValue: url,
       } satisfies ParsedCard;
     })
-    .filter((c): c is ParsedCard => c !== null);
+    .filter((c) => c !== null) as ParsedCard[];
+}
+
+// ─── contentType 자동 감지 (URL 기반) ─────────────────────────────────────────
+// URL을 분석해 레퍼런스의 contentType을 추론합니다.
+// App.tsx의 handleSave, ImportScreen 등에서 공통 사용.
+
+export type ContentType = "font" | "color" | "layout" | "article" | "mood" | "general";
+
+export function detectContentType(url: string): ContentType {
+  if (!url) return "general";
+  const lower = url.toLowerCase();
+  if (
+    lower.includes("fonts.google") ||
+    lower.includes("myfonts.com") ||
+    lower.includes("noonnu.cc")
+  )
+    return "font";
+  if (
+    lower.includes("coolors.co") ||
+    lower.includes("color.adobe.com") ||
+    lower.includes("colorhunt.co")
+  )
+    return "color";
+  if (
+    lower.includes("figma.com/community") ||
+    lower.includes("behance.net") ||
+    lower.includes("dribbble.com")
+  )
+    return "layout";
+  if (
+    lower.includes("medium.com") ||
+    lower.includes("brunch.co.kr") ||
+    lower.includes("velog.io") ||
+    lower.includes("notion.so")
+  )
+    return "article";
+  if (
+    lower.includes("pinterest.") ||
+    lower.includes("unsplash.com") ||
+    lower.includes("instagram.com")
+  )
+    return "mood";
+  return "general";
 }
 
 // ─── 자동 감지 + 파싱 ──────────────────────────────────────────────────────────

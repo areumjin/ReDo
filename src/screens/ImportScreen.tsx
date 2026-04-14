@@ -62,7 +62,7 @@ function detectContentType(url: string): CardData["contentType"] {
   if (u.includes("fonts.google")) return "font";
   if (u.includes("pinterest") || u.includes("unsplash")) return "mood";
   if (u.includes("figma") || u.includes("behance") || u.includes("dribbble")) return "layout";
-  return "other";
+  return "general";
 }
 
 function getDomain(url: string): string {

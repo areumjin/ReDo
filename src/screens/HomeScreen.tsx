@@ -648,7 +648,7 @@ function EmptyMoodboard({ onFabPress }: { onFabPress?: () => void }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 interface HomeScreenProps {
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
   onCardTap?: (card: CardData) => void;
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
@@ -678,10 +678,16 @@ export function HomeScreen({
   const [sortMode, setSortMode] = useState<SortMode>("최신순");
   const [sortOpen, setSortOpen] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("전체");
   const sortRef = useRef<HTMLDivElement>(null);
 
   const cardSource = cardsProp ?? ALL_CARDS;
   const execSet = executedCardIds ?? new Set<number>();
+
+  // 고유 프로젝트 태그 (카드에서 동적 추출)
+  const projectTags = Array.from(
+    new Set(cardSource.map((c) => c.projectTag).filter(Boolean))
+  );
 
   // Close sort dropdown on outside click
   useEffect(() => {
@@ -721,9 +727,15 @@ export function HomeScreen({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardSource]);
 
+  // 프로젝트 필터 → 색상 필터 AND 조건으로 적용
+  const projectFiltered =
+    selectedProject === "전체"
+      ? cardSource
+      : cardSource.filter((c) => c.projectTag === selectedProject);
+
   const filteredCards = activeFilter === "전체"
-    ? cardSource
-    : cardSource.filter((c) => colorCategoryMap.get(c.id) === activeFilter);
+    ? projectFiltered
+    : projectFiltered.filter((c) => colorCategoryMap.get(c.id) === activeFilter);
 
   // Apply sort mode
   const sortedCards = (() => {
@@ -763,6 +775,72 @@ export function HomeScreen({
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "none", paddingBottom: 4 }}
       >
+        {/* ── 프로젝트 필터 탭 (PROMPT 9) ── */}
+        {projectTags.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "4px 12px 2px",
+              overflowX: "auto",
+              scrollbarWidth: "none",
+            }}
+          >
+            {["전체", ...projectTags].map((tag) => {
+              const isActive = selectedProject === tag;
+              return (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedProject(tag)}
+                  style={{
+                    flexShrink: 0,
+                    height: 28,
+                    padding: "0 12px",
+                    borderRadius: 999,
+                    border: isActive ? "none" : "1px solid #6A70FF",
+                    background: isActive ? "#6A70FF" : "transparent",
+                    color: isActive ? "#fff" : "#6A70FF",
+                    fontSize: 12,
+                    fontWeight: isActive ? 600 : 400,
+                    cursor: "pointer",
+                    fontFamily: FONT,
+                    WebkitTapHighlightColor: "transparent",
+                    lineHeight: 1,
+                  }}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+            {/* 프로젝트 선택 시 작업대 바로가기 버튼 */}
+            {selectedProject !== "전체" && (
+              <button
+                onClick={() => onTabChange?.("작업대")}
+                style={{
+                  flexShrink: 0,
+                  height: 28,
+                  padding: "0 10px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "transparent",
+                  color: "#6A70FF",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  WebkitTapHighlightColor: "transparent",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                  marginLeft: "auto",
+                }}
+              >
+                작업대 보기
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Filter chips row + Sort button */}
         <div
           style={{

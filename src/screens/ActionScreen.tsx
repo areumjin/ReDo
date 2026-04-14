@@ -605,7 +605,7 @@ function NoCardsState({ onFabPress }: { onFabPress?: () => void }) {
 
 interface ActionScreenProps {
   cards?: CardData[];
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
   onExecuteCard?: (id: number) => void;

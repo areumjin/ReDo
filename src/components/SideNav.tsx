@@ -1,6 +1,5 @@
 import { useBreakpoint } from "../hooks/useBreakpoint";
-
-type ActiveTab = "홈" | "보관" | "활용" | "기록";
+import type { ActiveTab } from "../context/AppContext";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
 

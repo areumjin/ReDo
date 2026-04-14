@@ -518,7 +518,7 @@ function ListCard({ card, onTap, executedCardIds, folderColors }: { card: CardDa
 // ─── Archive Screen ───────────────────────────────────────────────────────────
 
 interface ArchiveScreenProps {
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
   onCardTap?: (card: CardData) => void;
   onFabPress?: () => void;
   pendingCard?: PendingCardData | null;

@@ -1,10 +1,49 @@
+// ─── Card Service — Supabase CRUD ────────────────────────────────────────────
+//
+// Supabase 테이블 스키마 (마이그레이션 SQL):
+//
+// CREATE TABLE IF NOT EXISTS cards (
+//   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//   user_id       uuid REFERENCES auth.users ON DELETE CASCADE,
+//   title         text NOT NULL,
+//   url           text,
+//   image_url     text,
+//   saved_reason  text,
+//   project_tag   text,
+//   source        text,
+//   chips         text[]  DEFAULT '{}',
+//   status        text    DEFAULT 'pending',   -- pending | executed | archived
+//   content_type  text    DEFAULT 'general',   -- font | color | layout | article | mood | general
+//   execution_memo text,
+//   ai_analysis   jsonb,
+//   created_at    timestamptz DEFAULT now(),
+//   executed_at   timestamptz
+// );
+//
+// CREATE TABLE IF NOT EXISTS executions (
+//   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//   card_id     uuid REFERENCES cards ON DELETE CASCADE,
+//   memo        text,
+//   executed_at timestamptz DEFAULT now()
+// );
+//
+// -- contentType 컬럼 추가 마이그레이션 (기존 테이블 업데이트 시):
+// ALTER TABLE cards ADD COLUMN IF NOT EXISTS content_type TEXT DEFAULT 'general';
+//
+// -- RLS (Row Level Security) 정책:
+// ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
+// CREATE POLICY "Users can only access their own cards"
+//   ON cards FOR ALL USING (auth.uid() = user_id);
+
 import { supabase } from './supabase'
 import type { CardData } from '../types'
 
-// Supabase row → CardData 변환
+// ─── Supabase row → CardData 변환 ─────────────────────────────────────────────
 function rowToCard(row: Record<string, unknown>): CardData {
   return {
-    id: typeof row.id === 'string' ? row.id.hashCode?.() ?? Math.abs(hashStr(row.id as string)) : Number(row.id),
+    id: typeof row.id === 'string'
+      ? Math.abs(hashStr(row.id as string))
+      : Number(row.id),
     title: (row.title as string) || '제목 없음',
     image: (row.image_url as string) || '',
     projectTag: (row.project_tag as string) || '',
@@ -15,6 +54,8 @@ function rowToCard(row: Record<string, unknown>): CardData {
     daysAgo: formatDaysAgo(row.created_at as string),
     supabaseId: row.id as string,
     executionMemo: (row.execution_memo as string) || '',
+    contentType: (row.content_type as CardData['contentType']) || 'general',
+    urlValue: (row.url as string) || '',
   }
 }
 
@@ -45,7 +86,7 @@ function formatDaysAgo(isoDate: string): string {
   return `${Math.floor(days / 30)}달 전`
 }
 
-// CardData → Supabase INSERT row
+// ─── CardData → Supabase INSERT row ─────────────────────────────────────────
 function cardToInsertRow(card: Partial<CardData> & { urlValue?: string; userId?: string }) {
   return {
     user_id: card.userId || null,
@@ -57,10 +98,11 @@ function cardToInsertRow(card: Partial<CardData> & { urlValue?: string; userId?:
     source: card.source || null,
     chips: card.chips || [],
     status: 'pending',
+    content_type: card.contentType || 'general',
   }
 }
 
-// 전체 카드 조회 (created_at DESC)
+// ─── 전체 카드 조회 ──────────────────────────────────────────────────────────
 export async function getCards(): Promise<CardData[]> {
   if (!supabase) return []
   const { data, error } = await supabase
@@ -74,7 +116,7 @@ export async function getCards(): Promise<CardData[]> {
   return (data || []).map((row) => rowToCard(row as Record<string, unknown>))
 }
 
-// 새 카드 저장
+// ─── 새 카드 저장 ────────────────────────────────────────────────────────────
 export async function saveCard(
   card: Partial<CardData> & { urlValue?: string; userId?: string }
 ): Promise<CardData | null> {
@@ -88,7 +130,7 @@ export async function saveCard(
   return rowToCard(data as Record<string, unknown>)
 }
 
-// 카드 상태 업데이트
+// ─── 카드 상태 업데이트 ──────────────────────────────────────────────────────
 export async function updateCardStatus(
   supabaseId: string,
   status: 'pending' | 'executed' | 'archived',
@@ -106,12 +148,26 @@ export async function updateCardStatus(
   return true
 }
 
-// 카드 삭제
+// ─── 카드 삭제 ───────────────────────────────────────────────────────────────
 export async function deleteCard(supabaseId: string): Promise<boolean> {
   if (!supabase) return false
   const { error } = await supabase.from('cards').delete().eq('id', supabaseId)
   if (error) {
     console.error('[cardService] deleteCard error:', error)
+    return false
+  }
+  return true
+}
+
+// ─── 실행 기록 저장 (executions 테이블) ─────────────────────────────────────
+export async function saveExecution(cardId: string, memo?: string): Promise<boolean> {
+  if (!supabase) return false
+  const { error } = await supabase.from('executions').insert({
+    card_id: cardId,
+    memo: memo || null,
+  })
+  if (error) {
+    console.error('[cardService] saveExecution error:', error)
     return false
   }
   return true
