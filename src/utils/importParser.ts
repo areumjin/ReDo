@@ -250,7 +250,7 @@ export function parseJSON(text: string): ParsedCard[] {
 
 // ─── 자동 감지 + 파싱 ──────────────────────────────────────────────────────────
 
-export type PlatformHint = "pinterest" | "notion" | "generic" | "json" | "unknown";
+export type PlatformHint = "pinterest" | "notion" | "generic" | "json" | "html" | "unknown";
 
 export function detectPlatform(text: string, filename: string): PlatformHint {
   const ext = filename.split(".").pop()?.toLowerCase();
