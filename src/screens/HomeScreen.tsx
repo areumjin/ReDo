@@ -145,6 +145,7 @@ function TopBar({
   onProfilePress?: () => void;
   userName?: string;
 }) {
+  const { isMobile } = useBreakpoint();
   const [bellOpen, setBellOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -194,7 +195,7 @@ function TopBar({
         </p>
       </div>
 
-      <div className="flex items-center" style={{ gap: 8 }}>
+      {isMobile && <div className="flex items-center" style={{ gap: 8 }}>
         {/* Bell button */}
         <div ref={bellRef} style={{ position: "relative" }}>
           <button
@@ -299,7 +300,7 @@ function TopBar({
             </span>
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
