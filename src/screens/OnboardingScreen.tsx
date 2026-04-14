@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { fetchLinkMetadata } from "../utils/fetchMetadata";
 import { supabase } from "../lib/supabase";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 // ─── Keyframe injection ────────────────────────────────────────────────────────
 
@@ -1960,11 +1961,173 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
   void selectedPlatforms; // suppress unused warning
 
   // Progress bar pct per phase (only for steps 1–3)
+  const { isMobile, isDesktop } = useBreakpoint();
+
   const progressPct =
     phase === "step1" ? 33 : phase === "step2" ? 66 : phase === "step3" ? 100 : 100;
 
   const showProgress = phase === "step1" || phase === "step2" || phase === "step3";
 
+  // Phase content element (shared across layouts)
+  const phaseContent = (
+    <div
+      key={slideKey}
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        animation:
+          slideKey > 0
+            ? "ob3-slide-in 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both"
+            : "none",
+      }}
+    >
+      {phase === "step1" && (
+        <Step1Screen
+          onNext={() => advanceTo("step2")}
+          onSkip={() => advanceTo("step2")}
+        />
+      )}
+
+      {phase === "step2" && (
+        <Step2Screen
+          urlInput={urlInput}
+          onUrlChange={handleUrlChange}
+          thumbnailVisible={thumbnailVisible}
+          selectedChips={selectedChips}
+          onToggleChip={handleToggleChip}
+          savedReason={savedReason}
+          onReasonChange={setSavedReason}
+          onSave={handleSave}
+          onSkip={() => { setSkipped(true); advanceTo("step3"); }}
+          ogImage={ogImage}
+          aiReasons={aiReasons}
+          aiLoading={aiLoading}
+        />
+      )}
+
+      {phase === "step3" && (
+        <Step3Screen
+          savedCard={savedCard}
+          onCTA={handleStep3CTA}
+          demoCards={skipped ? DEMO_CARDS : undefined}
+        />
+      )}
+
+      {phase === "login" && <LoginScreen onLogin={handleLogin} />}
+
+      {phase === "platform" && (
+        <PlatformScreen
+          onConnect={handlePlatformDone}
+          onSkip={handlePlatformDone}
+          onImportCards={onImportCards}
+        />
+      )}
+    </div>
+  );
+
+  // ── Desktop: brand panel (left 50%) + steps (right 50%) ──────────────────
+  if (isDesktop) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          fontFamily: FONT,
+          overflow: "hidden",
+        }}
+      >
+        {/* Left brand panel */}
+        <div
+          style={{
+            flex: 1,
+            background: "var(--redo-brand)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 20,
+            padding: 40,
+          }}
+        >
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              background: "rgba(255,255,255,0.15)",
+              borderRadius: 18,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-1px" }}>Re</span>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 10 }}>
+              ReDo
+            </p>
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", margin: 0, lineHeight: 1.6, maxWidth: 280 }}>
+              레퍼런스를 저장하고 분석해서<br />디자인 실력을 키워요
+            </p>
+          </div>
+        </div>
+
+        {/* Right onboarding steps */}
+        <div
+          style={{
+            flex: 1,
+            background: "var(--redo-bg-primary)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ background: "var(--redo-bg-primary)", flexShrink: 0 }}>
+            <StatusBar />
+          </div>
+          {phaseContent}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tablet: centered card layout ─────────────────────────────────────────
+  if (!isMobile) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "var(--redo-bg-secondary)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: FONT,
+        }}
+      >
+        <div
+          style={{
+            width: 480,
+            maxWidth: "90vw",
+            height: "85vh",
+            background: "var(--redo-bg-primary)",
+            borderRadius: 20,
+            boxShadow: "0 8px 40px rgba(0,0,0,0.10)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          {phaseContent}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mobile: full-screen layout ────────────────────────────────────────────
   return (
     <div
       style={{
@@ -1982,63 +2145,7 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
       <div style={{ background: "var(--redo-bg-primary)", flexShrink: 0 }}>
         <StatusBar />
       </div>
-
-      {/* Phase content — key triggers slide animation on phase change */}
-      <div
-        key={slideKey}
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          animation:
-            slideKey > 0
-              ? "ob3-slide-in 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both"
-              : "none",
-        }}
-      >
-        {phase === "step1" && (
-          <Step1Screen
-            onNext={() => advanceTo("step2")}
-            onSkip={() => advanceTo("step2")}
-          />
-        )}
-
-        {phase === "step2" && (
-          <Step2Screen
-            urlInput={urlInput}
-            onUrlChange={handleUrlChange}
-            thumbnailVisible={thumbnailVisible}
-            selectedChips={selectedChips}
-            onToggleChip={handleToggleChip}
-            savedReason={savedReason}
-            onReasonChange={setSavedReason}
-            onSave={handleSave}
-            onSkip={() => { setSkipped(true); advanceTo("step3"); }}
-            ogImage={ogImage}
-            aiReasons={aiReasons}
-            aiLoading={aiLoading}
-          />
-        )}
-
-        {phase === "step3" && (
-          <Step3Screen
-            savedCard={savedCard}
-            onCTA={handleStep3CTA}
-            demoCards={skipped ? DEMO_CARDS : undefined}
-          />
-        )}
-
-        {phase === "login" && <LoginScreen onLogin={handleLogin} />}
-
-        {phase === "platform" && (
-          <PlatformScreen
-            onConnect={handlePlatformDone}
-            onSkip={handlePlatformDone}
-            onImportCards={onImportCards}
-          />
-        )}
-      </div>
+      {phaseContent}
     </div>
   );
 }

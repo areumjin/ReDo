@@ -67,6 +67,8 @@ import { type CardData, ALL_CARDS } from "./types";
 import { getCurrentUser, onAuthStateChange, signOut } from "./lib/auth";
 import { getCards, saveCard, deleteCard } from "./lib/cardService";
 import { supabase } from "./lib/supabase";
+import { useBreakpoint } from "./hooks/useBreakpoint";
+import { SideNav } from "./components/SideNav";
 
 type ActiveTab = "홈" | "보관" | "활용" | "기록";
 
@@ -156,6 +158,7 @@ export default function App() {
 
   // ── Toast — declared early so useEffects below can reference showToast ───
   const { showToast, ToastNode } = useToast();
+  const { isMobile, isDesktop } = useBreakpoint();
 
   // ── Auth initialization ───────────────────────────────────────────────────
   useEffect(() => {
@@ -673,9 +676,9 @@ export default function App() {
     );
   }
 
-  return (
-    <div
-      style={{
+  // ── 반응형 루트 레이아웃 ─────────────────────────────────────────────────
+  const rootStyle: React.CSSProperties = isMobile
+    ? {
         position: "fixed",
         top: 0,
         left: "50%",
@@ -688,14 +691,42 @@ export default function App() {
         boxShadow: "0 0 40px rgba(0,0,0,0.08)",
         borderLeft: "0.5px solid rgba(0,0,0,0.06)",
         borderRight: "0.5px solid rgba(0,0,0,0.06)",
-      }}
-    >
+      }
+    : {
+        display: "flex",
+        width: "100%",
+        height: "100dvh",
+        background: "var(--redo-bg-secondary)",
+        overflow: "hidden",
+      };
+
+  return (
+    <div style={rootStyle}>
+      {/* 태블릿/데스크탑: SideNav */}
+      {!isMobile && (
+        <SideNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onFabPress={() => setSheetOpen(true)}
+          onProfilePress={() => setSettingsVisible(true)}
+          userName={userName ?? undefined}
+        />
+      )}
+
+      {/* 메인 컨텐츠 영역 */}
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-        }}
+        style={isMobile
+          ? { position: "relative", width: "100%", height: "100%" }
+          : {
+              flex: 1,
+              height: "100dvh",
+              overflow: "hidden",
+              position: "relative",
+              maxWidth: isDesktop ? 680 : undefined,
+              background: "white",
+              borderRight: isDesktop ? "0.5px solid var(--redo-border)" : undefined,
+            }
+        }
       >
         {/* ── Login screen ── */}
         {appScreen === "login" && (
@@ -839,29 +870,31 @@ export default function App() {
               )}
             </div>
 
-            {/* Detail screen — slides in on top from right */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                transform: slideTransform,
-                transition: slideTransition,
-                willChange: "transform",
-                pointerEvents: detailVisible ? "auto" : "none",
-              }}
-            >
-              <DetailScreen
-                card={selectedCard}
-                allCards={cards}
-                backLabel={BACK_LABELS[returnTab]}
-                onBack={handleCloseDetail}
-                onRelatedTap={handleRelatedTap}
-                executedCardIds={executedCardIds}
-                onExecute={handleExecuteCard}
-                onLater={handleLaterCard}
-                onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
-              />
-            </div>
+            {/* Detail screen — slides in on top from right (mobile / tablet only) */}
+            {!isDesktop && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: slideTransform,
+                  transition: slideTransition,
+                  willChange: "transform",
+                  pointerEvents: detailVisible ? "auto" : "none",
+                }}
+              >
+                <DetailScreen
+                  card={selectedCard}
+                  allCards={cards}
+                  backLabel={BACK_LABELS[returnTab]}
+                  onBack={handleCloseDetail}
+                  onRelatedTap={handleRelatedTap}
+                  executedCardIds={executedCardIds}
+                  onExecute={handleExecuteCard}
+                  onLater={handleLaterCard}
+                  onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
+                />
+              </div>
+            )}
 
             {/* Settings screen — slides in from right (z:65) */}
             <div
@@ -1013,6 +1046,36 @@ export default function App() {
           </>
         )}
       </div>
+
+      {/* Desktop: Detail panel as 3rd column (right side) */}
+      {isDesktop && appScreen === "main" && (
+        <div
+          style={{
+            flex: 1,
+            minWidth: 360,
+            maxWidth: 520,
+            height: "100dvh",
+            background: "white",
+            borderLeft: "0.5px solid var(--redo-border)",
+            flexShrink: 0,
+            overflow: "hidden",
+            display: detailVisible ? "flex" : "none",
+            flexDirection: "column",
+          }}
+        >
+          <DetailScreen
+            card={selectedCard}
+            allCards={cards}
+            backLabel={BACK_LABELS[returnTab]}
+            onBack={handleCloseDetail}
+            onRelatedTap={handleRelatedTap}
+            executedCardIds={executedCardIds}
+            onExecute={handleExecuteCard}
+            onLater={handleLaterCard}
+            onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

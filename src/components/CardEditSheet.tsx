@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { ImageWithFallback } from "./ImageWithFallback";
 import type { CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
@@ -73,24 +74,27 @@ export function CardEditSheet({ isOpen, card, onSave, onDelete, onClose, existin
     );
   };
 
+  const { isMobile } = useBreakpoint();
   const isVisible = phase !== "hidden";
+  const isAnimating = phase === "entering" || phase === "leaving";
 
-  const overlayOpacity =
-    phase === "entering" || phase === "leaving" ? 0 : 0.4;
-  const sheetTranslate =
-    phase === "entering" || phase === "leaving" ? "translateY(100%)" : "translateY(0)";
+  const overlayOpacity = isAnimating ? 0 : 0.4;
+  const sheetTranslate = isAnimating ? "translateY(100%)" : "translateY(0)";
+  const desktopScale = isAnimating ? "scale(0.96)" : "scale(1)";
+  const desktopOpacity = isAnimating ? 0 : 1;
 
   if (!isVisible || !card) return null;
 
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         zIndex: 70,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "flex-end",
+        justifyContent: isMobile ? "flex-end" : "center",
+        alignItems: isMobile ? "stretch" : "center",
       }}
     >
       {/* Backdrop */}
@@ -101,22 +105,30 @@ export function CardEditSheet({ isOpen, card, onSave, onDelete, onClose, existin
           inset: 0,
           background: "#000",
           opacity: overlayOpacity,
+          backdropFilter: isMobile ? undefined : "blur(4px)",
+          WebkitBackdropFilter: isMobile ? undefined : "blur(4px)",
           transition: "opacity 300ms ease",
         }}
       />
 
-      {/* Sheet */}
+      {/* Sheet / Modal */}
       <div
         style={{
           position: "relative",
+          width: isMobile ? "100%" : 480,
+          maxWidth: isMobile ? undefined : "90vw",
           background: "#ffffff",
-          borderRadius: "20px 20px 0 0",
-          maxHeight: "88%",
+          borderRadius: isMobile ? "20px 20px 0 0" : 20,
+          maxHeight: isMobile ? "88%" : "85vh",
           display: "flex",
           flexDirection: "column",
-          transform: sheetTranslate,
-          transition: "transform 300ms cubic-bezier(0.25,0.46,0.45,0.94)",
+          transform: isMobile ? sheetTranslate : desktopScale,
+          opacity: isMobile ? 1 : desktopOpacity,
+          transition: isMobile
+            ? "transform 300ms cubic-bezier(0.25,0.46,0.45,0.94)"
+            : "transform 0.24s ease, opacity 0.24s ease",
           overflow: "hidden",
+          boxShadow: isMobile ? undefined : "0 8px 40px rgba(0,0,0,0.16)",
         }}
       >
         {/* Handle bar */}

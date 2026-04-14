@@ -3,6 +3,7 @@ import { StatusBar } from "../components/StatusBar";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { type CardData } from "../types";
 import { extractColors, type ExtractedColor } from "../lib/colorExtractor";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 // ─── Font types ───────────────────────────────────────────────────────────────
 
@@ -41,8 +42,10 @@ if (typeof document !== "undefined" && !document.getElementById(DETAIL_STYLE_ID)
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
 
-const HERO_CONTAINER_H = 150;   // fixed container height
-const HERO_IMAGE_H = 200;       // taller image to allow upward travel
+const HERO_CONTAINER_H_MOBILE = 150;   // fixed container height (mobile)
+const HERO_IMAGE_H_MOBILE = 200;       // taller image to allow upward travel (mobile)
+const HERO_CONTAINER_H_LARGE = 250;    // tablet/desktop container height
+const HERO_IMAGE_H_LARGE = 320;        // tablet/desktop image height
 const PARALLAX_RATIO = 0.5;
 const MAX_TRANSLATE = -50;      // cap so image doesn't run out of bounds
 const MINI_HEADER_THRESHOLD = 130; // scrollY at which mini header appears
@@ -133,6 +136,11 @@ export function DetailScreen({
   onLater,
   onEditPress,
 }: DetailScreenProps) {
+  // ── Responsive hero heights ──
+  const { isMobile } = useBreakpoint();
+  const heroContainerH = isMobile ? HERO_CONTAINER_H_MOBILE : HERO_CONTAINER_H_LARGE;
+  const heroImageH = isMobile ? HERO_IMAGE_H_MOBILE : HERO_IMAGE_H_LARGE;
+
   // Local executed state REMOVED — derived from global executedCardIds
   // ── Color palette state ──
   const [paletteColors, setPaletteColors] = useState<ExtractedColor[]>([]);
@@ -160,9 +168,9 @@ export function DetailScreen({
     // Hero parallax
     if (heroImgRef.current) {
       const raw = scrollY * -PARALLAX_RATIO;
-      // Center offset: image is taller by (HERO_IMAGE_H - HERO_CONTAINER_H) = 50px
-      // So neutral offset is -(50/2) = -25px to center it at scroll 0
-      const centerOffset = -((HERO_IMAGE_H - HERO_CONTAINER_H) / 2);
+      // Center offset: image is taller by (heroImageH - heroContainerH)
+      // So neutral offset is -(diff/2) to center it at scroll 0
+      const centerOffset = -((heroImageH - heroContainerH) / 2);
       const translateY = Math.max(MAX_TRANSLATE, centerOffset + raw * 1);
       heroImgRef.current.style.transform = `translateY(${translateY}px)`;
     }
@@ -176,7 +184,7 @@ export function DetailScreen({
       miniHeaderRef.current.style.opacity = String(progress);
       miniHeaderRef.current.style.pointerEvents = progress > 0 ? "auto" : "none";
     }
-  }, []);
+  }, [heroImageH, heroContainerH]);
 
   // Reset scroll, hero parallax and mini-header BEFORE browser paint when card changes.
   // useLayoutEffect fires synchronously after DOM mutations but before paint,
@@ -193,10 +201,11 @@ export function DetailScreen({
 
     // 3. Hero image → centered position (same as scrollY=0 state)
     if (heroImgRef.current) {
-      const centerOffset = -((HERO_IMAGE_H - HERO_CONTAINER_H) / 2);
+      const centerOffset = -((heroImageH - heroContainerH) / 2);
       heroImgRef.current.style.transform = `translateY(${centerOffset}px)`;
     }
-  }, [card?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card?.id, heroImageH, heroContainerH]);
 
   // Scroll listener — throttled with rAF (kept as useEffect since it needs addEventListener)
   useEffect(() => {
@@ -516,7 +525,7 @@ export function DetailScreen({
           style={{
             position: "relative",
             width: "100%",
-            height: HERO_CONTAINER_H,
+            height: heroContainerH,
             overflow: "hidden",     // clips the taller image
             flexShrink: 0,
           }}
@@ -526,9 +535,9 @@ export function DetailScreen({
             ref={heroImgRef as React.RefObject<HTMLDivElement>}
             style={{
               width: "100%",
-              height: HERO_IMAGE_H,
+              height: heroImageH,
               // Initial centering: shift up by half the extra height
-              transform: `translateY(-${(HERO_IMAGE_H - HERO_CONTAINER_H) / 2}px)`,
+              transform: `translateY(-${(heroImageH - heroContainerH) / 2}px)`,
               willChange: "transform",
             }}
           >

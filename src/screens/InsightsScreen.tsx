@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import type { CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 import {
   calculateChipFrequency,
   calculateProjectStats,
@@ -1434,6 +1435,7 @@ export function InsightsScreen({
   userName,
 }: InsightsScreenProps) {
   const USER_NAME = userName ?? "게스트";
+  const { isDesktop } = useBreakpoint();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("취향");
 
   // ── Project tab state ──────────────────────────────────────────────────────
@@ -1561,20 +1563,81 @@ export function InsightsScreen({
         </p>
       </div>
 
-      {/* Sub-tab navigation */}
-      <SubTabBar active={activeSubTab} onChange={handleSubTabChange} />
+      {/* Sub-tab navigation — horizontal on mobile/tablet, hidden on desktop (replaced by left menu) */}
+      {!isDesktop && <SubTabBar active={activeSubTab} onChange={handleSubTabChange} />}
 
-      {/* Scrollable content */}
+      {/* Body: desktop = flex row (left menu + content); mobile/tablet = flex col */}
       <div
-        className="flex-1 overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: isDesktop ? "row" : "column",
+          overflow: "hidden",
+        }}
       >
+        {/* Desktop left vertical menu */}
+        {isDesktop && (
+          <div
+            style={{
+              width: 160,
+              flexShrink: 0,
+              background: "white",
+              borderRight: "0.5px solid var(--redo-border)",
+              display: "flex",
+              flexDirection: "column",
+              padding: "16px 0",
+              gap: 2,
+            }}
+          >
+            {SUB_TABS.map((tab) => {
+              const isActive = tab === activeSubTab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => handleSubTabChange(tab)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    height: 44,
+                    padding: "0 20px",
+                    background: isActive ? "var(--redo-brand-light)" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: FONT,
+                    fontSize: 14,
+                    fontWeight: isActive ? 500 : 400,
+                    color: isActive ? "var(--redo-brand)" : "var(--redo-text-secondary)",
+                    textAlign: "left",
+                    borderRadius: "0 10px 10px 0",
+                    marginRight: 8,
+                    transition: "background 120ms, color 120ms",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "var(--redo-bg-secondary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Scrollable content */}
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ scrollbarWidth: "none" }}
+        >
         {/* ── 취향 TAB ─────────────────────────────────────────────────── */}
         {activeSubTab === "취향" && (
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
+              display: isDesktop ? "grid" : "flex",
+              gridTemplateColumns: isDesktop ? "1fr 1fr" : undefined,
+              flexDirection: isDesktop ? undefined : "column",
               gap: 12,
               padding: "16px 16px",
             }}
@@ -1942,7 +2005,8 @@ export function InsightsScreen({
             <div style={{ height: 4 }} />
           </div>
         )}
-      </div>
+        </div>{/* end scrollable content */}
+      </div>{/* end body wrapper */}
 
       {/* Bottom Navigation */}
       <BottomNav
