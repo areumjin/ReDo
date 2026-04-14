@@ -36,6 +36,74 @@ const PLACEHOLDER_BG: Record<string, string> = {
 // Aspect ratios cycling for natural masonry feel
 const ASPECT_RATIOS = [3 / 4, 4 / 3, 1, 3 / 4, 4 / 3, 3 / 4, 1, 4 / 3];
 
+// ─── Color filter ─────────────────────────────────────────────────────────────
+
+type ColorCategory = "전체" | "레드/핑크" | "오렌지/옐로" | "그린" | "블루/퍼플" | "뉴트럴";
+
+const COLOR_FILTERS: { label: ColorCategory; swatch: string }[] = [
+  { label: "전체",       swatch: "" },
+  { label: "레드/핑크",  swatch: "linear-gradient(135deg, #FF6B7A 0%, #F48080 100%)" },
+  { label: "오렌지/옐로", swatch: "linear-gradient(135deg, #F5A862 0%, #FFD966 100%)" },
+  { label: "그린",       swatch: "linear-gradient(135deg, #6CBF8A 0%, #A8D5BA 100%)" },
+  { label: "블루/퍼플",  swatch: "linear-gradient(135deg, #7B9FE8 0%, #A78BFA 100%)" },
+  { label: "뉴트럴",    swatch: "linear-gradient(135deg, #CCCCCC 0%, #888888 100%)" },
+];
+
+function classifyColor(r: number, g: number, b: number): ColorCategory {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (s < 0.18 || l > 0.92 || l < 0.08) return "뉴트럴";
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d + 6) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+  }
+  if (h < 30 || h >= 330) return "레드/핑크";
+  if (h < 80) return "오렌지/옐로";
+  if (h < 160) return "그린";
+  if (h < 270) return "블루/퍼플";
+  return "레드/핑크"; // 270-330: 마젠타/핑크
+}
+
+async function extractDominantCategory(imageUrl: string): Promise<ColorCategory> {
+  return new Promise((resolve) => {
+    if (!imageUrl || imageUrl.startsWith("data:application")) { resolve("뉴트럴"); return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const SIZE = 40;
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve("뉴트럴"); return; }
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        let data: Uint8ClampedArray;
+        try { data = ctx.getImageData(0, 0, SIZE, SIZE).data; }
+        catch { resolve("뉴트럴"); return; }
+        const counts: Record<string, number> = { "레드/핑크": 0, "오렌지/옐로": 0, "그린": 0, "블루/퍼플": 0, "뉴트럴": 0 };
+        for (let i = 0; i < data.length; i += 4) {
+          counts[classifyColor(data[i], data[i + 1], data[i + 2])]++;
+        }
+        const total = SIZE * SIZE;
+        if (counts["뉴트럴"] / total > 0.70) { resolve("뉴트럴"); return; }
+        let best: ColorCategory = "뉴트럴", bestCount = 0;
+        for (const cat of ["레드/핑크", "오렌지/옐로", "그린", "블루/퍼플"] as ColorCategory[]) {
+          if (counts[cat] > bestCount) { bestCount = counts[cat]; best = cat; }
+        }
+        resolve(best);
+      } catch { resolve("뉴트럴"); }
+    };
+    img.onerror = () => resolve("뉴트럴");
+    img.src = imageUrl;
+  });
+}
+
 // ─── Dropdown shell ───────────────────────────────────────────────────────────
 
 function Dropdown({
@@ -554,7 +622,8 @@ export function HomeScreen({
   userName,
 }: HomeScreenProps) {
   const { isMobile, isDesktop } = useBreakpoint();
-  const [activeFilter, setActiveFilter] = useState("전체");
+  const [activeFilter, setActiveFilter] = useState<ColorCategory>("전체");
+  const [colorCategoryMap, setColorCategoryMap] = useState<Map<number, ColorCategory>>(new Map());
   const [sortMode, setSortMode] = useState<SortMode>("최신순");
   const [sortOpen, setSortOpen] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
@@ -588,13 +657,22 @@ export function HomeScreen({
   ).length;
   const unexecutedCount = totalCount - executedCount;
 
-  // Folder filter chips
-  const projectTags = Array.from(new Set(cardSource.map((c) => c.projectTag)));
-  const filterChips = ["전체", ...projectTags];
+  // Color category extraction — runs lazily per card
+  useEffect(() => {
+    const pending = cardSource.filter((c) => c.image && !colorCategoryMap.has(c.id));
+    if (pending.length === 0) return;
+    pending.forEach((card) => {
+      if (!card.image) return;
+      extractDominantCategory(card.image).then((cat) => {
+        setColorCategoryMap((prev) => new Map(prev).set(card.id, cat));
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardSource]);
 
   const filteredCards = activeFilter === "전체"
     ? cardSource
-    : cardSource.filter((c) => c.projectTag === activeFilter);
+    : cardSource.filter((c) => colorCategoryMap.get(c.id) === activeFilter);
 
   // Apply sort mode
   const sortedCards = (() => {
@@ -643,46 +721,76 @@ export function HomeScreen({
             padding: "10px 12px 10px",
           }}
         >
-          {/* Scrollable filter chips */}
+          {/* Scrollable color filter swatches */}
           <div
             style={{
               display: "flex",
-              gap: 6,
+              gap: 8,
               overflowX: "auto",
               scrollbarWidth: "none",
               flexWrap: "nowrap",
               flex: 1,
               minWidth: 0,
+              alignItems: "center",
             }}
           >
-            {filterChips.map((chip) => {
-              const isActive = activeFilter === chip;
+            {COLOR_FILTERS.map(({ label, swatch }) => {
+              const isActive = activeFilter === label;
+              if (label === "전체") {
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setActiveFilter(label)}
+                    style={{
+                      height: 32,
+                      minHeight: 44,
+                      paddingLeft: 14,
+                      paddingRight: 14,
+                      borderRadius: 999,
+                      border: "none",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 400,
+                      fontFamily: FONT,
+                      background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
+                      color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
+                      transition: "all 150ms ease",
+                      display: "flex",
+                      alignItems: "center",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    전체
+                  </button>
+                );
+              }
               return (
                 <button
-                  key={chip}
-                  onClick={() => setActiveFilter(chip)}
+                  key={label}
+                  onClick={() => setActiveFilter(label)}
+                  title={label}
                   style={{
+                    width: 32,
                     height: 32,
+                    minWidth: 44,
                     minHeight: 44,
-                    paddingLeft: 14,
-                    paddingRight: 14,
-                    borderRadius: 999,
+                    borderRadius: "50%",
                     border: "none",
                     cursor: "pointer",
                     flexShrink: 0,
-                    fontSize: 13,
-                    fontWeight: isActive ? 600 : 400,
-                    fontFamily: FONT,
-                    background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
-                    color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
-                    transition: "all 150ms ease",
+                    background: swatch,
+                    boxShadow: isActive
+                      ? "0 0 0 2.5px white, 0 0 0 4.5px var(--redo-text-primary, #1A1A2E)"
+                      : "0 1px 4px rgba(0,0,0,0.18)",
+                    transition: "box-shadow 150ms ease, transform 100ms ease",
+                    transform: isActive ? "scale(1.12)" : "scale(1)",
+                    WebkitTapHighlightColor: "transparent",
                     display: "flex",
                     alignItems: "center",
-                    WebkitTapHighlightColor: "transparent",
+                    justifyContent: "center",
                   }}
-                >
-                  {chip}
-                </button>
+                />
               );
             })}
           </div>
