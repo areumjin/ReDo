@@ -783,11 +783,10 @@ export function HomeScreen({
                     cursor: "pointer",
                     flexShrink: 0,
                     background: swatch,
-                    boxShadow: isActive
-                      ? "0 0 0 2px white, 0 0 0 3.5px var(--redo-text-primary, #1A1A2E)"
-                      : "none",
-                    transition: "box-shadow 150ms ease, transform 100ms ease",
-                    transform: isActive ? "scale(1.15)" : "scale(1)",
+                    outline: isActive ? "2.5px solid var(--redo-text-primary, #1A1A2E)" : "none",
+                    outlineOffset: 2,
+                    transition: "outline 150ms ease, transform 100ms ease",
+                    transform: isActive ? "scale(1.1)" : "scale(1)",
                     WebkitTapHighlightColor: "transparent",
                     display: "flex",
                     alignItems: "center",
