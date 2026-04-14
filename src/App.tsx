@@ -418,6 +418,7 @@ export default function App() {
   const handleDeleteCard = useCallback((card: CardData) => {
     setCards((prev) => prev.filter((c) => c.id !== card.id));
     setEditSheetOpen(false);
+    setDetailVisible(false); // 디테일 화면도 닫아서 이전 탭으로 복귀
     // Supabase에서도 삭제
     if (card.supabaseId) {
       deleteCard(card.supabaseId).catch(console.error);
