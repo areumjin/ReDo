@@ -451,6 +451,56 @@ function MoodboardCard({
         </div>
       )}
 
+      {/* Hover overlay — 저장 이유 (데스크탑 only) */}
+      {!isMobile && card.savedReason && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            background: "linear-gradient(to top, rgba(60,52,137,0.85) 0%, transparent 50%)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 200ms ease",
+            display: "flex",
+            alignItems: "flex-end",
+            padding: "12px 10px",
+            pointerEvents: "none",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: 10,
+                color: "#CECBF6",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                margin: "0 0 4px 0",
+                fontFamily: FONT,
+                lineHeight: 1.3,
+              }}
+            >
+              저장 이유
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "white",
+                fontWeight: 500,
+                margin: 0,
+                fontFamily: FONT,
+                lineHeight: 1.4,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {card.savedReason}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Executed badge */}
       {isExecuted && (
         <div
