@@ -742,15 +742,15 @@ export function HomeScreen({
                     key={label}
                     onClick={() => setActiveFilter(label)}
                     style={{
-                      height: 32,
-                      minHeight: 44,
-                      paddingLeft: 14,
-                      paddingRight: 14,
+                      height: 26,
+                      minHeight: 36,
+                      paddingLeft: 12,
+                      paddingRight: 12,
                       borderRadius: 999,
                       border: "none",
                       cursor: "pointer",
                       flexShrink: 0,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: isActive ? 600 : 400,
                       fontFamily: FONT,
                       background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
@@ -771,20 +771,20 @@ export function HomeScreen({
                   onClick={() => setActiveFilter(label)}
                   title={label}
                   style={{
-                    width: 32,
-                    height: 32,
-                    minWidth: 44,
-                    minHeight: 44,
+                    width: 22,
+                    height: 22,
+                    minWidth: 36,
+                    minHeight: 36,
                     borderRadius: "50%",
                     border: "none",
                     cursor: "pointer",
                     flexShrink: 0,
                     background: swatch,
                     boxShadow: isActive
-                      ? "0 0 0 2.5px white, 0 0 0 4.5px var(--redo-text-primary, #1A1A2E)"
-                      : "0 1px 4px rgba(0,0,0,0.18)",
+                      ? "0 0 0 2px white, 0 0 0 3.5px var(--redo-text-primary, #1A1A2E)"
+                      : "0 1px 3px rgba(0,0,0,0.18)",
                     transition: "box-shadow 150ms ease, transform 100ms ease",
-                    transform: isActive ? "scale(1.12)" : "scale(1)",
+                    transform: isActive ? "scale(1.15)" : "scale(1)",
                     WebkitTapHighlightColor: "transparent",
                     display: "flex",
                     alignItems: "center",
