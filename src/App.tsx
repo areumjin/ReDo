@@ -696,7 +696,7 @@ export default function App() {
         display: "flex",
         width: "100%",
         height: "100dvh",
-        background: "var(--redo-bg-secondary)",
+        background: "white",
         overflow: "hidden",
       };
 
@@ -788,7 +788,6 @@ export default function App() {
               height: "100dvh",
               overflow: "hidden",
               position: "relative",
-              maxWidth: isDesktop && appScreen === "main" ? 680 : undefined,
               background: "white",
               borderRight: isDesktop && appScreen === "main" ? "0.5px solid var(--redo-border)" : undefined,
             }

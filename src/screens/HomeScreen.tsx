@@ -42,11 +42,11 @@ type ColorCategory = "전체" | "레드/핑크" | "오렌지/옐로" | "그린" 
 
 const COLOR_FILTERS: { label: ColorCategory; swatch: string }[] = [
   { label: "전체",       swatch: "" },
-  { label: "레드/핑크",  swatch: "linear-gradient(135deg, #FF6B7A 0%, #F48080 100%)" },
-  { label: "오렌지/옐로", swatch: "linear-gradient(135deg, #F5A862 0%, #FFD966 100%)" },
-  { label: "그린",       swatch: "linear-gradient(135deg, #6CBF8A 0%, #A8D5BA 100%)" },
-  { label: "블루/퍼플",  swatch: "linear-gradient(135deg, #7B9FE8 0%, #A78BFA 100%)" },
-  { label: "뉴트럴",    swatch: "linear-gradient(135deg, #CCCCCC 0%, #888888 100%)" },
+  { label: "레드/핑크",  swatch: "#FF6B7A" },
+  { label: "오렌지/옐로", swatch: "#F5A862" },
+  { label: "그린",       swatch: "#6CBF8A" },
+  { label: "블루/퍼플",  swatch: "#7B9FE8" },
+  { label: "뉴트럴",    swatch: "#AAAAAA" },
 ];
 
 function classifyColor(r: number, g: number, b: number): ColorCategory {
@@ -621,7 +621,7 @@ export function HomeScreen({
   cards: cardsProp,
   userName,
 }: HomeScreenProps) {
-  const { isMobile, isDesktop } = useBreakpoint();
+  const { isMobile, isDesktop, width: viewportWidth } = useBreakpoint();
   const [activeFilter, setActiveFilter] = useState<ColorCategory>("전체");
   const [colorCategoryMap, setColorCategoryMap] = useState<Map<number, ColorCategory>>(new Map());
   const [sortMode, setSortMode] = useState<SortMode>("최신순");
@@ -718,7 +718,7 @@ export function HomeScreen({
             display: "flex",
             alignItems: "center",
             gap: 0,
-            padding: "10px 12px 10px",
+            padding: "6px 12px 6px",
           }}
         >
           {/* Scrollable color filter swatches */}
@@ -727,11 +727,13 @@ export function HomeScreen({
               display: "flex",
               gap: 8,
               overflowX: "auto",
+              overflowY: "visible",
               scrollbarWidth: "none",
               flexWrap: "nowrap",
               flex: 1,
               minWidth: 0,
               alignItems: "center",
+              padding: "4px 0",
             }}
           >
             {COLOR_FILTERS.map(({ label, swatch }) => {
@@ -782,7 +784,7 @@ export function HomeScreen({
                     background: swatch,
                     boxShadow: isActive
                       ? "0 0 0 2px white, 0 0 0 3.5px var(--redo-text-primary, #1A1A2E)"
-                      : "0 1px 3px rgba(0,0,0,0.18)",
+                      : "none",
                     transition: "box-shadow 150ms ease, transform 100ms ease",
                     transform: isActive ? "scale(1.15)" : "scale(1)",
                     WebkitTapHighlightColor: "transparent",
@@ -890,7 +892,7 @@ export function HomeScreen({
         {sortedCards.length > 0 ? (
           <div
             style={{
-              columns: isDesktop ? 4 : isMobile ? 2 : 3,
+              columns: viewportWidth >= 1800 ? 6 : viewportWidth >= 1400 ? 5 : viewportWidth >= 1200 ? 4 : isMobile ? 2 : 3,
               columnGap: isDesktop ? 12 : 8,
               padding: isDesktop ? "0 16px 16px" : "0 12px 12px",
             }}
