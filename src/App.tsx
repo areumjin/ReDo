@@ -1091,6 +1091,7 @@ export default function App() {
             <ExecutionMemoSheet
               isOpen={memoSheetOpen}
               card={memoTargetCard}
+              cards={cards}
               onComplete={handleMemoComplete}
               onSkip={handleMemoSkip}
               onClose={() => setMemoSheetOpen(false)}
