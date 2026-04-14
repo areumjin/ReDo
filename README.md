@@ -89,6 +89,22 @@ npx vercel --prod
 
 ---
 
+## 배포 후 체크리스트 (PROMPT 11)
+
+```
+[ ] 모바일 375px 레이아웃 정상 확인
+[ ] ?onboarding=true URL 파라미터 온보딩 강제 진입 동작 확인
+[ ] Share Extension (공유하기 → ReDo) 동작 확인 (Android/iOS)
+[ ] 클립보드 URL 자동 감지 → 바텀시트 열림 동작 확인
+[ ] Supabase 연결 상태 확인 (Vercel Environment Variables 설정)
+[ ] PWA 설치 가능 여부 확인 (Chrome → 주소창 우측 설치 아이콘)
+[ ] 작업대 탭 → 실행 완료 카드 표시 확인
+[ ] Figma 내보내기 → 클립보드 복사 확인
+[ ] 홈 프로젝트 필터 + 색상 필터 AND 조건 동작 확인
+```
+
+---
+
 ## 기술 스택
 
 | 항목 | 기술 |
