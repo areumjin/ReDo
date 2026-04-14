@@ -3,6 +3,7 @@ import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { type CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ function FrontCard({
         }}
       >
         {/* Thumbnail */}
-        <div className="relative w-full shrink-0" style={{ height: 140 }}>
+        <div className="relative w-full shrink-0" style={{ height: typeof window !== "undefined" && window.innerWidth >= 768 ? 200 : 140 }}>
           <ImageWithFallback
             src={card.image}
             alt={card.title}
@@ -611,6 +612,7 @@ interface ActionScreenProps {
 }
 
 export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCardIds, onExecuteCard }: ActionScreenProps) {
+  const { isMobile, isDesktop } = useBreakpoint();
   // ── Derive swipe deck ONCE at mount — frozen for this session ──────────
   // Excludes cards already marked 실행완료, plus any executed
   // this session (executedCardIds from App.tsx) so returning users see a
@@ -911,7 +913,12 @@ export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCard
         {/* ── Card stack area ── */}
         <div
           className="flex-1 relative"
-          style={{ marginBottom: isDone ? 0 : 16 }}
+          style={{
+            marginBottom: isDone ? 0 : 16,
+            maxWidth: isMobile ? undefined : 480,
+            margin: isMobile ? undefined : "0 auto",
+            width: "100%",
+          }}
         >
           {swipeCards.length === 0 && cards.length === 0 ? (
             /* No cards saved at all */

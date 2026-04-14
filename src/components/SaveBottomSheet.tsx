@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { fetchLinkMetadata, extractChipsFromMeta } from "../utils/fetchMetadata";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
@@ -527,7 +528,7 @@ function UrlInputRow({
   urlValue: string;
   setUrlValue: (v: string) => void;
   fetchState: FetchState;
-  onPaste: (url: string) => void;
+  onPaste: (url: string) => void; // URL이 감지될 때마다 호출 (paste + onChange)
   onClear: () => void;
 }) {
   const isActive = fetchState !== "idle";
@@ -595,7 +596,16 @@ function UrlInputRow({
       <input
         type="url"
         value={urlValue}
-        onChange={(e) => setUrlValue(e.target.value)}
+        onChange={(e) => {
+          const val = e.target.value;
+          setUrlValue(val);
+          // 모바일에서는 onPaste가 안 오고 onChange만 와서 붙여넣기 감지 불가.
+          // 한 번에 긴 URL이 들어온 경우(붙여넣기)만 fetch 트리거.
+          const trimmed = val.trim();
+          if (trimmed.length > 10 && isValidUrl(trimmed)) {
+            onPaste(trimmed);
+          }
+        }}
         onPaste={(e) => {
           const pasted = e.clipboardData.getData("text").trim();
           if (isValidUrl(pasted)) {
@@ -1056,6 +1066,8 @@ export function SaveBottomSheet({
   folderColors,
   onFolderColorChange,
 }: SaveBottomSheetProps) {
+  const { isMobile } = useBreakpoint();
+
   const [phase, setPhase] = useState<
     "hidden" | "entering" | "visible" | "leaving"
   >("hidden");
@@ -1361,19 +1373,23 @@ export function SaveBottomSheet({
 
   if (phase === "hidden") return null;
 
-  const sheetTranslateY =
-    phase === "entering" || phase === "leaving" ? "100%" : "0%";
-  const scrimOpacity = phase === "entering" || phase === "leaving" ? 0 : 0.3;
+  const isAnimating = phase === "entering" || phase === "leaving";
+  const sheetTranslateY = isAnimating ? "100%" : "0%";
+  const scrimOpacity = isAnimating ? 0 : 0.3;
+  // Desktop modal scale animation
+  const desktopScale = isAnimating ? "scale(0.96)" : "scale(1)";
+  const desktopOpacity = isAnimating ? 0 : 1;
 
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "flex-end",
+        justifyContent: isMobile ? "flex-end" : "center",
+        alignItems: isMobile ? "stretch" : "center",
         overflow: "hidden",
       }}
     >
@@ -1384,22 +1400,32 @@ export function SaveBottomSheet({
           position: "absolute",
           inset: 0,
           background: `rgba(0,0,0,${scrimOpacity})`,
+          backdropFilter: isMobile ? undefined : "blur(4px)",
+          WebkitBackdropFilter: isMobile ? undefined : "blur(4px)",
           transition: "background 0.3s ease",
         }}
       />
 
-      {/* Sheet panel */}
+      {/* Sheet / Modal panel */}
       <div
         ref={sheetRef}
         style={{
           position: "relative",
-          width: "100%",
+          width: isMobile ? "100%" : 500,
+          maxWidth: isMobile ? undefined : "90vw",
           background: "var(--redo-bg-primary)",
-          borderRadius: "var(--radius-sheet) var(--radius-sheet) 0 0",
-          boxShadow: "0 -4px 32px rgba(0,0,0,0.14)",
-          transform: `translateY(${sheetTranslateY})`,
-          transition: "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
-          maxHeight: "85%",
+          borderRadius: isMobile
+            ? "var(--radius-sheet) var(--radius-sheet) 0 0"
+            : 20,
+          boxShadow: isMobile
+            ? "0 -4px 32px rgba(0,0,0,0.14)"
+            : "0 8px 40px rgba(0,0,0,0.16)",
+          transform: isMobile ? `translateY(${sheetTranslateY})` : desktopScale,
+          opacity: isMobile ? 1 : desktopOpacity,
+          transition: isMobile
+            ? "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)"
+            : "transform 0.24s ease, opacity 0.24s ease",
+          maxHeight: isMobile ? "85%" : "85vh",
           display: "flex",
           flexDirection: "column",
           willChange: "transform",

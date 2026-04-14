@@ -3,6 +3,7 @@ import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { ALL_CARDS, type CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 
@@ -344,6 +345,8 @@ function GridCard({
 }) {
   const isDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
   const dotColor = isDone ? "var(--redo-success)" : "var(--redo-brand)";
+  const { isMobile } = useBreakpoint();
+  const [hovered, setHovered] = useState(false);
 
   return (
     <div
@@ -352,19 +355,22 @@ function GridCard({
         borderRadius: "var(--radius-card)",
         border: "0.5px solid var(--redo-border)",
         overflow: "hidden",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
+        boxShadow: !isMobile && hovered ? "0 4px 16px rgba(0,0,0,0.12)" : "0 1px 6px rgba(0,0,0,0.05)",
         opacity: 1,
-        transition: "opacity 0.1s",
+        transition: "opacity 0.1s, box-shadow 150ms, transform 150ms",
+        transform: !isMobile && hovered ? "translateY(-2px)" : "none",
         cursor: "pointer",
         position: "relative",
       }}
       onClick={onTap}
       onPointerDown={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "0.88")}
       onPointerUp={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "1")}
-      onPointerLeave={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "1")}
+      onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = "1"; setHovered(false); }}
+      onMouseEnter={() => { if (!isMobile) setHovered(true); }}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Thumbnail */}
-      <div className="relative w-full" style={{ height: 88 }}>
+      <div className="relative w-full" style={{ height: isMobile ? 88 : 140, position: "relative" }}>
         {card.image ? (
           <ImageWithFallback
             src={card.image}
@@ -536,6 +542,7 @@ export function ArchiveScreen({
   cards: cardsProp,
   folderColors,
 }: ArchiveScreenProps) {
+  const { isMobile, isDesktop } = useBreakpoint();
   const cardSource = cardsProp ?? ALL_CARDS;
   const projectTags = useMemo(() => Array.from(new Set(cardSource.map(c => c.projectTag))), [cardSource]);
   const FILTER_CHIPS = useMemo(() => ["전체", ...projectTags, "미실행"], [projectTags]);
@@ -835,7 +842,7 @@ export function ArchiveScreen({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
               gap: 10,
               overflow: "visible",
             }}

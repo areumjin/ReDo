@@ -65,8 +65,10 @@ import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { getCurrentUser, onAuthStateChange, signOut } from "./lib/auth";
-import { getCards, saveCard } from "./lib/cardService";
+import { getCards, saveCard, deleteCard } from "./lib/cardService";
 import { supabase } from "./lib/supabase";
+import { useBreakpoint } from "./hooks/useBreakpoint";
+import { SideNav } from "./components/SideNav";
 
 type ActiveTab = "홈" | "보관" | "활용" | "기록";
 
@@ -156,6 +158,7 @@ export default function App() {
 
   // ── Toast — declared early so useEffects below can reference showToast ───
   const { showToast, ToastNode } = useToast();
+  const { isMobile, isDesktop } = useBreakpoint();
 
   // ── Auth initialization ───────────────────────────────────────────────────
   useEffect(() => {
@@ -178,16 +181,31 @@ export default function App() {
 
     // Check current session
     getCurrentUser()
-      .then((user) => {
+      .then(async (user) => {
         clearTimeout(timeout);
         if (user) {
           setCurrentUserId(user.id);
           setCurrentUserEmail(user.email ?? null);
-          if (forceOnboarding || !isAlreadyOnboarded) {
+          if (forceOnboarding) {
             goToScreen("onboarding");
-          } else {
+          } else if (isAlreadyOnboarded) {
             goToScreen("main");
             loadCardsFromSupabase();
+          } else {
+            // localStorage에 온보딩 기록이 없더라도,
+            // Supabase에 카드가 있으면 기존 유저 → 온보딩 스킵
+            try {
+              const existingCards = await getCards();
+              if (existingCards.length > 0) {
+                localStorage.setItem("redo_onboarded", "true");
+                setCards(existingCards);
+                goToScreen("main");
+              } else {
+                goToScreen("onboarding");
+              }
+            } catch {
+              goToScreen("onboarding");
+            }
           }
         } else {
           goToScreen("login");
@@ -324,14 +342,30 @@ export default function App() {
   };
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
-  const handleLoginSuccess = (userId: string) => {
+  const handleLoginSuccess = async (userId: string) => {
     setCurrentUserId(userId);
-    if (forceOnboarding || !isAlreadyOnboarded) {
+    if (forceOnboarding) {
       setOnboardingKey((k) => k + 1);
       setAppScreen("onboarding");
-    } else {
+    } else if (isAlreadyOnboarded) {
       setAppScreen("main");
       loadCardsFromSupabase();
+    } else {
+      // localStorage 기록 없어도 기존 카드 있으면 온보딩 스킵
+      try {
+        const existingCards = await getCards();
+        if (existingCards.length > 0) {
+          localStorage.setItem("redo_onboarded", "true");
+          setCards(existingCards);
+          setAppScreen("main");
+        } else {
+          setOnboardingKey((k) => k + 1);
+          setAppScreen("onboarding");
+        }
+      } catch {
+        setOnboardingKey((k) => k + 1);
+        setAppScreen("onboarding");
+      }
     }
   };
 
@@ -382,6 +416,16 @@ export default function App() {
 
   const handleEditCard = useCallback((id: number, updated: Partial<CardData>) => {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+  }, []);
+
+  const handleDeleteCard = useCallback((card: CardData) => {
+    setCards((prev) => prev.filter((c) => c.id !== card.id));
+    setEditSheetOpen(false);
+    setDetailVisible(false); // 디테일 화면도 닫아서 이전 탭으로 복귀
+    // Supabase에서도 삭제
+    if (card.supabaseId) {
+      deleteCard(card.supabaseId).catch(console.error);
+    }
   }, []);
 
   // Global executed card IDs — persists across tab switches within the session
@@ -632,9 +676,9 @@ export default function App() {
     );
   }
 
-  return (
-    <div
-      style={{
+  // ── 반응형 루트 레이아웃 ─────────────────────────────────────────────────
+  const rootStyle: React.CSSProperties = isMobile
+    ? {
         position: "fixed",
         top: 0,
         left: "50%",
@@ -647,14 +691,42 @@ export default function App() {
         boxShadow: "0 0 40px rgba(0,0,0,0.08)",
         borderLeft: "0.5px solid rgba(0,0,0,0.06)",
         borderRight: "0.5px solid rgba(0,0,0,0.06)",
-      }}
-    >
+      }
+    : {
+        display: "flex",
+        width: "100%",
+        height: "100dvh",
+        background: "var(--redo-bg-secondary)",
+        overflow: "hidden",
+      };
+
+  return (
+    <div style={rootStyle}>
+      {/* 태블릿/데스크탑: SideNav */}
+      {!isMobile && (
+        <SideNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onFabPress={() => setSheetOpen(true)}
+          onProfilePress={() => setSettingsVisible(true)}
+          userName={userName ?? undefined}
+        />
+      )}
+
+      {/* 메인 컨텐츠 영역 */}
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-        }}
+        style={isMobile
+          ? { position: "relative", width: "100%", height: "100%" }
+          : {
+              flex: 1,
+              height: "100dvh",
+              overflow: "hidden",
+              position: "relative",
+              maxWidth: isDesktop ? 680 : undefined,
+              background: "white",
+              borderRight: isDesktop ? "0.5px solid var(--redo-border)" : undefined,
+            }
+        }
       >
         {/* ── Login screen ── */}
         {appScreen === "login" && (
@@ -798,29 +870,31 @@ export default function App() {
               )}
             </div>
 
-            {/* Detail screen — slides in on top from right */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                transform: slideTransform,
-                transition: slideTransition,
-                willChange: "transform",
-                pointerEvents: detailVisible ? "auto" : "none",
-              }}
-            >
-              <DetailScreen
-                card={selectedCard}
-                allCards={cards}
-                backLabel={BACK_LABELS[returnTab]}
-                onBack={handleCloseDetail}
-                onRelatedTap={handleRelatedTap}
-                executedCardIds={executedCardIds}
-                onExecute={handleExecuteCard}
-                onLater={handleLaterCard}
-                onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
-              />
-            </div>
+            {/* Detail screen — slides in on top from right (mobile / tablet only) */}
+            {!isDesktop && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: slideTransform,
+                  transition: slideTransition,
+                  willChange: "transform",
+                  pointerEvents: detailVisible ? "auto" : "none",
+                }}
+              >
+                <DetailScreen
+                  card={selectedCard}
+                  allCards={cards}
+                  backLabel={BACK_LABELS[returnTab]}
+                  onBack={handleCloseDetail}
+                  onRelatedTap={handleRelatedTap}
+                  executedCardIds={executedCardIds}
+                  onExecute={handleExecuteCard}
+                  onLater={handleLaterCard}
+                  onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
+                />
+              </div>
+            )}
 
             {/* Settings screen — slides in from right (z:65) */}
             <div
@@ -963,12 +1037,45 @@ export default function App() {
               onSave={(updated) => {
                 if (editTargetCard) handleEditCard(editTargetCard.id, updated);
               }}
+              onDelete={() => {
+                if (editTargetCard) handleDeleteCard(editTargetCard);
+              }}
               onClose={() => setEditSheetOpen(false)}
               existingProjects={existingProjects}
             />
           </>
         )}
       </div>
+
+      {/* Desktop: Detail panel as 3rd column (right side) */}
+      {isDesktop && appScreen === "main" && (
+        <div
+          style={{
+            flex: 1,
+            minWidth: 360,
+            maxWidth: 520,
+            height: "100dvh",
+            background: "white",
+            borderLeft: "0.5px solid var(--redo-border)",
+            flexShrink: 0,
+            overflow: "hidden",
+            display: detailVisible ? "flex" : "none",
+            flexDirection: "column",
+          }}
+        >
+          <DetailScreen
+            card={selectedCard}
+            allCards={cards}
+            backLabel={BACK_LABELS[returnTab]}
+            onBack={handleCloseDetail}
+            onRelatedTap={handleRelatedTap}
+            executedCardIds={executedCardIds}
+            onExecute={handleExecuteCard}
+            onLater={handleLaterCard}
+            onEditPress={selectedCard ? () => handleOpenEdit(selectedCard) : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

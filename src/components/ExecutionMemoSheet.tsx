@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans KR', system-ui, sans-serif";
@@ -38,21 +39,27 @@ export function ExecutionMemoSheet({
     }
   }, [isOpen]);
 
+  const { isMobile } = useBreakpoint();
+
   if (phase === "hidden") return null;
 
   const isVisible = phase === "visible";
+  const isAnimating = !isVisible;
   const sheetY = isVisible ? "translateY(0)" : "translateY(100%)";
   const scrimOpacity = isVisible ? 0.4 : 0;
+  const desktopScale = isVisible ? "scale(1)" : "scale(0.96)";
+  const desktopOpacity = isVisible ? 1 : 0;
 
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         zIndex: 60,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "flex-end",
+        justifyContent: isMobile ? "flex-end" : "center",
+        alignItems: isMobile ? "stretch" : "center",
         overflow: "hidden",
       }}
     >
@@ -63,22 +70,30 @@ export function ExecutionMemoSheet({
           position: "absolute",
           inset: 0,
           background: `rgba(0,0,0,${scrimOpacity})`,
+          backdropFilter: isMobile ? undefined : "blur(4px)",
+          WebkitBackdropFilter: isMobile ? undefined : "blur(4px)",
           transition: "background 0.3s ease",
         }}
       />
 
-      {/* Sheet */}
+      {/* Sheet / Modal */}
       <div
         style={{
           position: "relative",
-          width: "100%",
+          width: isMobile ? "100%" : 480,
+          maxWidth: isMobile ? undefined : "90vw",
           background: "#ffffff",
-          borderRadius: "20px 20px 0 0",
-          boxShadow: "0 -4px 32px rgba(0,0,0,0.14)",
-          transform: sheetY,
-          transition: isVisible
-            ? "transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)"
-            : "transform 250ms cubic-bezier(0.55, 0, 1, 0.45)",
+          borderRadius: isMobile ? "20px 20px 0 0" : 20,
+          boxShadow: isMobile
+            ? "0 -4px 32px rgba(0,0,0,0.14)"
+            : "0 8px 40px rgba(0,0,0,0.16)",
+          transform: isMobile ? sheetY : desktopScale,
+          opacity: isMobile ? 1 : desktopOpacity,
+          transition: isMobile
+            ? (isAnimating
+              ? "transform 250ms cubic-bezier(0.55, 0, 1, 0.45)"
+              : "transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)")
+            : "transform 0.24s ease, opacity 0.24s ease",
           paddingBottom: 24,
           willChange: "transform",
         }}

@@ -269,3 +269,43 @@
 html {
   font-size: var(--font-size);
 }
+
+/* ─── 반응형 브레이크포인트 변수 ─────────────────────────────────────────── */
+
+:root {
+  --bp-mobile: 430px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1200px;
+
+  --app-max-width: 430px;
+  --sidebar-width: 260px;
+  --content-max-width: 680px;
+  --grid-columns: 2;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-max-width: 100%;
+    --grid-columns: 3;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --grid-columns: 4;
+  }
+}
+
+/* ─── 데스크탑 스크롤바 ───────────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.25);
+  }
+}

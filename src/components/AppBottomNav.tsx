@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 type ActiveTab = "홈" | "보관" | "활용" | "기록";
 
@@ -71,6 +72,7 @@ function TabButton({ tab, isActive, onTabChange }: { tab: ActiveTab; isActive: b
 }
 
 export function BottomNav({ activeTab, onTabChange, onFabPress }: BottomNavProps) {
+  const { isMobile } = useBreakpoint();
   const [fabPhase, setFabPhase] = useState<FabPhase>("idle");
   const [ripples, setRipples] = useState<RippleState[]>([]);
   const rippleId = useRef(0);
@@ -125,6 +127,9 @@ export function BottomNav({ activeTab, onTabChange, onFabPress }: BottomNavProps
     triggerHaptic(e.clientX - rect.left, e.clientY - rect.top);
     onFabPress?.();
   };
+
+  // 태블릿/데스크탑에서 바텀 네비 숨김 — SideNav가 대신함
+  if (!isMobile) return null;
 
   return (
     <div

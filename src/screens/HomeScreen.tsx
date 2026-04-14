@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { StatusBar } from "../components/StatusBar";
 import { BottomNav } from "../components/AppBottomNav";
 import { ALL_CARDS, type CardData } from "../types";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 import { sortByRelevance, buildContext } from "../lib/relevanceScore";
 
 // ─── Keyframe injection ───────────────────────────────────────────────────────
@@ -311,27 +312,39 @@ function MoodboardCard({
 }) {
   const isExecuted = executedCardIds.has(card.id) || card.statusDot === "실행완료";
   const [pressed, setPressed] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const { isMobile } = useBreakpoint();
 
   const aspectRatio = ASPECT_RATIOS[index % ASPECT_RATIOS.length];
   const placeholderBg = PLACEHOLDER_BG[card.projectTag] ?? "#F1EFE8";
+
+  const hoverScale = !isMobile && hovered ? 1.02 : pressed ? 0.97 : 1;
+  const hoverShadow = !isMobile && hovered
+    ? "0 4px 16px rgba(0,0,0,0.12)"
+    : "none";
 
   return (
     <div
       style={{
         breakInside: "avoid",
-        marginBottom: 8,
-        borderRadius: 12,
+        marginBottom: isMobile ? 8 : 12,
+        borderRadius: isMobile ? 12 : 14,
         overflow: "hidden",
         cursor: "pointer",
-        transform: pressed ? "scale(0.97)" : "scale(1)",
-        transition: pressed ? "transform 80ms ease-in" : "transform 150ms ease-out",
+        transform: `scale(${hoverScale})`,
+        transition: pressed
+          ? "transform 80ms ease-in"
+          : "transform 150ms ease-out, box-shadow 150ms ease-out",
+        boxShadow: hoverShadow,
         position: "relative",
         WebkitTapHighlightColor: "transparent",
       }}
       onClick={() => onTap(card)}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}
+      onPointerLeave={() => { setPressed(false); setHovered(false); }}
+      onMouseEnter={() => { if (!isMobile) setHovered(true); }}
+      onMouseLeave={() => setHovered(false)}
     >
       {card.image ? (
         <img
@@ -540,6 +553,7 @@ export function HomeScreen({
   cards: cardsProp,
   userName,
 }: HomeScreenProps) {
+  const { isMobile, isDesktop } = useBreakpoint();
   const [activeFilter, setActiveFilter] = useState("전체");
   const [sortMode, setSortMode] = useState<SortMode>("최신순");
   const [sortOpen, setSortOpen] = useState(false);
@@ -768,9 +782,9 @@ export function HomeScreen({
         {sortedCards.length > 0 ? (
           <div
             style={{
-              columns: 2,
-              columnGap: 8,
-              padding: "0 12px 12px",
+              columns: isDesktop ? 4 : isMobile ? 2 : 3,
+              columnGap: isDesktop ? 12 : 8,
+              padding: isDesktop ? "0 16px 16px" : "0 12px 12px",
             }}
           >
             {sortedCards.map((card, index) => (
