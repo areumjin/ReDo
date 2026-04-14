@@ -127,10 +127,18 @@ async function fetchViaEdgeFunction(url: string): Promise<LinkMetadata | null> {
     };
     if (data.error) return null;
 
+    // JS/CSS URL이 아닌 실제 이미지인지 검증
+    const rawImage = data.imageBase64 ?? data.imageUrl ?? null;
+    const imageUrl = rawImage && (
+      rawImage.startsWith("data:image/") ||
+      /scontent[^.]*\.(cdninstagram|fbcdn)\./.test(rawImage) ||
+      /\.(jpg|jpeg|png|webp|gif)(\?|#|$)/i.test(rawImage)
+    ) ? rawImage : null;
+
     return {
       title: data.title ?? "",
       description: data.description ?? "",
-      imageUrl: data.imageBase64 ?? data.imageUrl ?? null,
+      imageUrl,
       siteName: data.siteName ?? "",
       favicon: null,
     };
