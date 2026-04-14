@@ -33,6 +33,14 @@ if (typeof document !== "undefined" && !document.getElementById(DETAIL_STYLE_ID)
       0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
       40% { transform: scale(1); opacity: 1; }
     }
+    @keyframes redo-lightbox-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes redo-lightbox-img-in {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
   `;
   document.head.appendChild(s);
 }
@@ -140,6 +148,9 @@ export function DetailScreen({
   const { isMobile } = useBreakpoint();
   const heroContainerH = isMobile ? HERO_CONTAINER_H_MOBILE : HERO_CONTAINER_H_LARGE;
   const heroImageH = isMobile ? HERO_IMAGE_H_MOBILE : HERO_IMAGE_H_LARGE;
+
+  // ── Lightbox state ──
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Local executed state REMOVED — derived from global executedCardIds
   // ── Color palette state ──
@@ -339,6 +350,7 @@ export function DetailScreen({
   const isCompleted = isExecuted;
 
   return (
+    <>
     <div
       style={{
         width: "100%",
@@ -522,12 +534,14 @@ export function DetailScreen({
 
         {/* ── Hero image with parallax ── */}
         <div
+          onClick={() => card?.image && setLightboxOpen(true)}
           style={{
             position: "relative",
             width: "100%",
             height: heroContainerH,
             overflow: "hidden",     // clips the taller image
             flexShrink: 0,
+            cursor: card?.image ? "zoom-in" : "default",
           }}
         >
           {/* Actual image — taller than container, moved by parallax */}
@@ -1112,5 +1126,65 @@ export function DetailScreen({
         </button>
       </div>
     </div>
+
+    {/* ── Lightbox ── */}
+    {lightboxOpen && card?.image && (
+      <div
+        onClick={() => setLightboxOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          background: "rgba(0,0,0,0.92)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          animation: "redo-lightbox-in 200ms ease",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={() => setLightboxOpen(false)}
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.15)",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+          </svg>
+        </button>
+
+        {/* Image */}
+        <img
+          src={card.image}
+          alt={card.title}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            maxWidth: "92vw",
+            maxHeight: "88vh",
+            objectFit: "contain",
+            borderRadius: 12,
+            animation: "redo-lightbox-img-in 250ms cubic-bezier(0.25,0.46,0.45,0.94)",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+          }}
+        />
+      </div>
+    )}
+    </>
   );
 }

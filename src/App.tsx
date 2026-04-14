@@ -696,14 +696,80 @@ export default function App() {
         display: "flex",
         width: "100%",
         height: "100dvh",
-        background: "var(--redo-bg-secondary)",
+        background: "white",
         overflow: "hidden",
       };
 
+  // 로그인·온보딩은 전체 너비 풀스크린 — SideNav 없이
+  const isFullscreenScreen = appScreen === "login" || appScreen === "onboarding";
+
+  if (!isMobile && isFullscreenScreen) {
+    return (
+      <div style={{ width: "100%", height: "100dvh", overflow: "hidden" }}>
+        {appScreen === "login" && (
+          <LoginScreen
+            onLoginSuccess={handleLoginSuccess}
+            onGuestMode={handleGuestMode}
+          />
+        )}
+        {appScreen === "onboarding" && (
+          <OnboardingScreen
+            key={onboardingKey}
+            onComplete={handleOnboardingComplete}
+            forceMode={forceOnboarding}
+            onSaveCard={({ title, image, chips, savedReason, source, urlValue }) => {
+              const newCard: CardData = {
+                id: Date.now(),
+                title: title || "새 레퍼런스",
+                image: image || "",
+                projectTag: "영감",
+                savedReason: savedReason || "",
+                chips: chips || [],
+                source: source || "온보딩",
+                statusDot: "미실행",
+                daysAgo: "방금 전",
+                processingStatus: "processing",
+              };
+              setCards((prev) => [newCard, ...prev]);
+              if (supabase && currentUserId) {
+                import("./lib/cardService").then(({ saveCard }) => {
+                  saveCard({ ...newCard, urlValue, userId: currentUserId! });
+                });
+              }
+            }}
+            onImportCards={(importedCards) => {
+              const now = Date.now();
+              const newCards: CardData[] = importedCards.map((c, i) => ({
+                id: now + i,
+                title: c.title || "가져온 레퍼런스",
+                image: c.image || "",
+                projectTag: "영감",
+                savedReason: c.savedReason || "",
+                chips: c.chips || [],
+                source: c.source || "",
+                statusDot: "미실행",
+                daysAgo: "방금 전",
+              }));
+              setCards((prev) => [...newCards, ...prev]);
+              if (supabase && currentUserId) {
+                import("./lib/cardService").then(({ saveCard }) => {
+                  newCards.forEach((card) =>
+                    saveCard({ ...card, urlValue: "", userId: currentUserId! })
+                  );
+                });
+              }
+            }}
+          />
+        )}
+        {ToastNode}
+      </div>
+    );
+  }
+
   return (
     <div style={rootStyle}>
-      {/* 태블릿/데스크탑: SideNav */}
-      {!isMobile && (
+      {/* 태블릿/데스크탑: SideNav — 메인 화면에서만 표시 */}
+      {!isMobile && appScreen === "main" && (
         <SideNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -722,9 +788,8 @@ export default function App() {
               height: "100dvh",
               overflow: "hidden",
               position: "relative",
-              maxWidth: isDesktop ? 680 : undefined,
               background: "white",
-              borderRight: isDesktop ? "0.5px solid var(--redo-border)" : undefined,
+              borderRight: isDesktop && appScreen === "main" ? "0.5px solid var(--redo-border)" : undefined,
             }
         }
       >

@@ -36,6 +36,74 @@ const PLACEHOLDER_BG: Record<string, string> = {
 // Aspect ratios cycling for natural masonry feel
 const ASPECT_RATIOS = [3 / 4, 4 / 3, 1, 3 / 4, 4 / 3, 3 / 4, 1, 4 / 3];
 
+// ─── Color filter ─────────────────────────────────────────────────────────────
+
+type ColorCategory = "전체" | "레드/핑크" | "오렌지/옐로" | "그린" | "블루/퍼플" | "뉴트럴";
+
+const COLOR_FILTERS: { label: ColorCategory; swatch: string }[] = [
+  { label: "전체",       swatch: "" },
+  { label: "레드/핑크",  swatch: "#FF6B7A" },
+  { label: "오렌지/옐로", swatch: "#F5A862" },
+  { label: "그린",       swatch: "#6CBF8A" },
+  { label: "블루/퍼플",  swatch: "#7B9FE8" },
+  { label: "뉴트럴",    swatch: "#AAAAAA" },
+];
+
+function classifyColor(r: number, g: number, b: number): ColorCategory {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (s < 0.18 || l > 0.92 || l < 0.08) return "뉴트럴";
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d + 6) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+  }
+  if (h < 30 || h >= 330) return "레드/핑크";
+  if (h < 80) return "오렌지/옐로";
+  if (h < 160) return "그린";
+  if (h < 270) return "블루/퍼플";
+  return "레드/핑크"; // 270-330: 마젠타/핑크
+}
+
+async function extractDominantCategory(imageUrl: string): Promise<ColorCategory> {
+  return new Promise((resolve) => {
+    if (!imageUrl || imageUrl.startsWith("data:application")) { resolve("뉴트럴"); return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const SIZE = 40;
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve("뉴트럴"); return; }
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        let data: Uint8ClampedArray;
+        try { data = ctx.getImageData(0, 0, SIZE, SIZE).data; }
+        catch { resolve("뉴트럴"); return; }
+        const counts: Record<string, number> = { "레드/핑크": 0, "오렌지/옐로": 0, "그린": 0, "블루/퍼플": 0, "뉴트럴": 0 };
+        for (let i = 0; i < data.length; i += 4) {
+          counts[classifyColor(data[i], data[i + 1], data[i + 2])]++;
+        }
+        const total = SIZE * SIZE;
+        if (counts["뉴트럴"] / total > 0.70) { resolve("뉴트럴"); return; }
+        let best: ColorCategory = "뉴트럴", bestCount = 0;
+        for (const cat of ["레드/핑크", "오렌지/옐로", "그린", "블루/퍼플"] as ColorCategory[]) {
+          if (counts[cat] > bestCount) { bestCount = counts[cat]; best = cat; }
+        }
+        resolve(best);
+      } catch { resolve("뉴트럴"); }
+    };
+    img.onerror = () => resolve("뉴트럴");
+    img.src = imageUrl;
+  });
+}
+
 // ─── Dropdown shell ───────────────────────────────────────────────────────────
 
 function Dropdown({
@@ -77,6 +145,7 @@ function TopBar({
   onProfilePress?: () => void;
   userName?: string;
 }) {
+  const { isMobile } = useBreakpoint();
   const [bellOpen, setBellOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -126,7 +195,7 @@ function TopBar({
         </p>
       </div>
 
-      <div className="flex items-center" style={{ gap: 8 }}>
+      {isMobile && <div className="flex items-center" style={{ gap: 8 }}>
         {/* Bell button */}
         <div ref={bellRef} style={{ position: "relative" }}>
           <button
@@ -231,7 +300,7 @@ function TopBar({
             </span>
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -378,6 +447,56 @@ function MoodboardCard({
             <span style={{ fontSize: 11, color: "#888", fontFamily: FONT }}>
               {card.projectTag}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Hover overlay — 저장 이유 (데스크탑 only) */}
+      {!isMobile && card.savedReason && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            background: "linear-gradient(to top, rgba(60,52,137,0.85) 0%, transparent 50%)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 200ms ease",
+            display: "flex",
+            alignItems: "flex-end",
+            padding: "12px 10px",
+            pointerEvents: "none",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: 10,
+                color: "#CECBF6",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                margin: "0 0 4px 0",
+                fontFamily: FONT,
+                lineHeight: 1.3,
+              }}
+            >
+              저장 이유
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "white",
+                fontWeight: 500,
+                margin: 0,
+                fontFamily: FONT,
+                lineHeight: 1.4,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {card.savedReason}
+            </p>
           </div>
         </div>
       )}
@@ -553,8 +672,9 @@ export function HomeScreen({
   cards: cardsProp,
   userName,
 }: HomeScreenProps) {
-  const { isMobile, isDesktop } = useBreakpoint();
-  const [activeFilter, setActiveFilter] = useState("전체");
+  const { isMobile, isDesktop, width: viewportWidth } = useBreakpoint();
+  const [activeFilter, setActiveFilter] = useState<ColorCategory>("전체");
+  const [colorCategoryMap, setColorCategoryMap] = useState<Map<number, ColorCategory>>(new Map());
   const [sortMode, setSortMode] = useState<SortMode>("최신순");
   const [sortOpen, setSortOpen] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
@@ -588,13 +708,22 @@ export function HomeScreen({
   ).length;
   const unexecutedCount = totalCount - executedCount;
 
-  // Folder filter chips
-  const projectTags = Array.from(new Set(cardSource.map((c) => c.projectTag)));
-  const filterChips = ["전체", ...projectTags];
+  // Color category extraction — runs lazily per card
+  useEffect(() => {
+    const pending = cardSource.filter((c) => c.image && !colorCategoryMap.has(c.id));
+    if (pending.length === 0) return;
+    pending.forEach((card) => {
+      if (!card.image) return;
+      extractDominantCategory(card.image).then((cat) => {
+        setColorCategoryMap((prev) => new Map(prev).set(card.id, cat));
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardSource]);
 
   const filteredCards = activeFilter === "전체"
     ? cardSource
-    : cardSource.filter((c) => c.projectTag === activeFilter);
+    : cardSource.filter((c) => colorCategoryMap.get(c.id) === activeFilter);
 
   // Apply sort mode
   const sortedCards = (() => {
@@ -640,49 +769,80 @@ export function HomeScreen({
             display: "flex",
             alignItems: "center",
             gap: 0,
-            padding: "10px 12px 10px",
+            padding: "6px 12px 6px",
           }}
         >
-          {/* Scrollable filter chips */}
+          {/* Scrollable color filter swatches */}
           <div
             style={{
               display: "flex",
-              gap: 6,
+              gap: 8,
               overflowX: "auto",
+              overflowY: "visible",
               scrollbarWidth: "none",
               flexWrap: "nowrap",
               flex: 1,
               minWidth: 0,
+              alignItems: "center",
+              padding: "4px 0",
             }}
           >
-            {filterChips.map((chip) => {
-              const isActive = activeFilter === chip;
+            {COLOR_FILTERS.map(({ label, swatch }) => {
+              const isActive = activeFilter === label;
+              if (label === "전체") {
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setActiveFilter(label)}
+                    style={{
+                      height: 26,
+                      minHeight: 36,
+                      paddingLeft: 12,
+                      paddingRight: 12,
+                      borderRadius: 999,
+                      border: "none",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      fontSize: 12,
+                      fontWeight: isActive ? 600 : 400,
+                      fontFamily: FONT,
+                      background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
+                      color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
+                      transition: "all 150ms ease",
+                      display: "flex",
+                      alignItems: "center",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    전체
+                  </button>
+                );
+              }
               return (
                 <button
-                  key={chip}
-                  onClick={() => setActiveFilter(chip)}
+                  key={label}
+                  onClick={() => setActiveFilter(label)}
+                  title={label}
                   style={{
-                    height: 32,
-                    minHeight: 44,
-                    paddingLeft: 14,
-                    paddingRight: 14,
-                    borderRadius: 999,
-                    border: "none",
+                    width: 26,
+                    height: 26,
+                    minWidth: 36,
+                    minHeight: 36,
+                    borderRadius: "50%",
+                    border: isActive ? "3px solid #1A1A2E" : "3px solid transparent",
+                    boxSizing: "border-box",
                     cursor: "pointer",
                     flexShrink: 0,
-                    fontSize: 13,
-                    fontWeight: isActive ? 600 : 400,
-                    fontFamily: FONT,
-                    background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
-                    color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
-                    transition: "all 150ms ease",
+                    background: swatch,
+                    outline: "none",
+                    transition: "border 150ms ease, transform 100ms ease",
+                    transform: isActive ? "scale(1.1)" : "scale(1)",
+                    WebkitTapHighlightColor: "transparent",
                     display: "flex",
                     alignItems: "center",
-                    WebkitTapHighlightColor: "transparent",
+                    justifyContent: "center",
                   }}
-                >
-                  {chip}
-                </button>
+                />
               );
             })}
           </div>
@@ -782,7 +942,7 @@ export function HomeScreen({
         {sortedCards.length > 0 ? (
           <div
             style={{
-              columns: isDesktop ? 4 : isMobile ? 2 : 3,
+              columns: viewportWidth >= 1800 ? 6 : viewportWidth >= 1400 ? 5 : viewportWidth >= 1200 ? 4 : isMobile ? 2 : 3,
               columnGap: isDesktop ? 12 : 8,
               padding: isDesktop ? "0 16px 16px" : "0 12px 12px",
             }}
