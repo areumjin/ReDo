@@ -57,20 +57,41 @@ interface SavedCardData {
   isDemo?: boolean; // 건너뛰기 시 Redo 데모 카드
 }
 
-// 온보딩 데모 카드 (건너뛰기 시)
+// 온보딩 데모 카드 (체험 / 건너뛰기 시)
 const DEMO_CARDS: SavedCardData[] = [
   {
-    title: "ReDo — 디자인 레퍼런스 앱",
-    reason: "링크 저장 → 이유 기록 → 스와이프로 실행",
-    chips: ["UI", "브랜딩"],
+    title: "Lottie Animation — 모바일 UI 인터랙션",
+    reason: "로딩 애니메이션 레퍼런스로 저장",
+    chips: ["모션", "UI"],
     image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&q=80",
     isDemo: true,
   },
   {
-    title: "저장한 레퍼런스를 이렇게 꺼내줘요",
-    reason: "실행 ✓ 스와이프로 작업에 바로 적용",
-    chips: ["모션", "UI"],
+    title: "Apple HIG — 타이포그래피 시스템 가이드",
+    reason: "타이포 위계 구조 참고용",
+    chips: ["타이포", "시스템"],
     image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80",
+    isDemo: true,
+  },
+  {
+    title: "Linear App — 대시보드 UI 패턴",
+    reason: "대시보드 레이아웃 구성 참고",
+    chips: ["레이아웃", "SaaS"],
+    image: "https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800&q=80",
+    isDemo: true,
+  },
+  {
+    title: "Stripe — 브랜드 컬러 팔레트",
+    reason: "파스텔 + 딥 컬러 조합 영감",
+    chips: ["컬러", "브랜딩"],
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+    isDemo: true,
+  },
+  {
+    title: "Notion — 정보 구조화 레이아웃",
+    reason: "콘텐츠 배치 아이디어 참고",
+    chips: ["레이아웃", "정보구조"],
+    image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80",
     isDemo: true,
   },
 ];
@@ -513,46 +534,43 @@ function Step1Screen({ onNext, onSkip }: { onNext: () => void; onSkip: () => voi
   );
 }
 
-// ─── Step 2: 첫 저장 ───────────────────────────────────────────────────────────
+// ─── Step 2: 체험 방식 선택 ───────────────────────────────────────────────────
+
+const STATIC_CHIPS = ["타이포 참고", "레이아웃 참고", "컬러 참고", "영감용"];
 
 interface Step2Props {
+  mode: "choose" | "direct";
   urlInput: string;
   onUrlChange: (v: string) => void;
   thumbnailVisible: boolean;
   ogImage: string | null;
-  aiReasons: string[];
-  aiLoading: boolean;
   selectedChips: Set<string>;
   onToggleChip: (chip: string) => void;
   savedReason: string;
   onReasonChange: (v: string) => void;
   onSave: () => void;
   onSkip: () => void;
+  onChooseDemo: () => void;
+  onChooseDirect: () => void;
 }
 
 function Step2Screen({
+  mode,
   urlInput,
   onUrlChange,
   thumbnailVisible,
   ogImage,
-  aiReasons,
-  aiLoading,
   selectedChips,
   onToggleChip,
   savedReason,
   onReasonChange,
   onSave,
   onSkip,
+  onChooseDemo,
+  onChooseDirect,
 }: Step2Props) {
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Top bar */}
       <div style={{ padding: "14px 16px 0", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -570,101 +588,162 @@ function Step2Screen({
           padding: "20px 16px 32px",
           display: "flex",
           flexDirection: "column",
-          gap: 0,
         }}
       >
         <StepLabel step={2} />
-        <StepTitle text="첫 레퍼런스를 저장해봐요" />
-        <StepSub text={"저장할 때 이유를 남기면\n나중에 더 잘 꺼내줄 수 있어요."} />
 
-        {/* URL Input */}
-        <div style={{ marginBottom: 12 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "var(--redo-bg-input)",
-              borderRadius: "var(--radius-button)",
-              padding: "0 12px",
-              height: 44,
-              border: "0.5px solid var(--redo-border)",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
-              <path
-                d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"
-                stroke="var(--redo-text-primary)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
-                stroke="var(--redo-text-primary)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <input
-              type="url"
-              placeholder="레퍼런스 URL을 붙여넣어요"
-              value={urlInput}
-              onChange={(e) => onUrlChange(e.target.value)}
-              style={{
-                flex: 1,
-                background: "none",
-                border: "none",
-                outline: "none",
-                fontSize: "var(--text-body)",
-                fontWeight: "var(--font-weight-regular)",
-                color: "var(--redo-text-primary)",
-                fontFamily: FONT,
-                lineHeight: 1.4,
-              }}
-            />
-          </div>
-        </div>
+        {mode === "choose" ? (
+          <>
+            <StepTitle text="ReDo를 바로 체험해볼까요?" />
+            <StepSub text="원하는 방식으로 시작해보세요." />
 
-        {/* Thumbnail preview — 실제 OG 이미지 or 도메인 플레이스홀더 */}
-        <div
-          style={{
-            height: thumbnailVisible ? 120 : 0,
-            borderRadius: 12,
-            overflow: "hidden",
-            marginBottom: thumbnailVisible ? 12 : 0,
-            transition: "height 300ms ease, margin-bottom 300ms ease",
-            flexShrink: 0,
-            position: "relative",
-          }}
-        >
-          {thumbnailVisible && ogImage ? (
-            <img
-              src={ogImage}
-              alt="미리보기"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          ) : thumbnailVisible ? (
+            {/* Two choice cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+              {/* Demo card */}
+              <button
+                onClick={onChooseDemo}
+                style={{
+                  flex: 1,
+                  borderRadius: 16,
+                  background: "var(--redo-bg-primary)",
+                  border: "0.5px solid var(--redo-border)",
+                  cursor: "pointer",
+                  padding: "24px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12,
+                  textAlign: "center",
+                  WebkitTapHighlightColor: "transparent",
+                  transition: "border-color 150ms ease, background 150ms ease",
+                  minHeight: 140,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--redo-brand)";
+                  e.currentTarget.style.background = "var(--redo-brand-light)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--redo-border)";
+                  e.currentTarget.style.background = "var(--redo-bg-primary)";
+                }}
+              >
+                <div
+                  style={{
+                    width: 48, height: 48, borderRadius: "50%",
+                    background: "var(--redo-brand-light)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="var(--redo-brand)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="12" r="3" stroke="var(--redo-brand)" strokeWidth="1.8" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "var(--redo-text-primary)", fontFamily: FONT, margin: 0, marginBottom: 4, lineHeight: 1.3 }}>
+                    예시로 먼저 체험하기
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--redo-text-secondary)", fontFamily: FONT, margin: 0, lineHeight: 1.5 }}>
+                    5개의 예시 레퍼런스로 체험해봐요
+                  </p>
+                </div>
+              </button>
+
+              {/* Direct save card */}
+              <button
+                onClick={onChooseDirect}
+                style={{
+                  flex: 1,
+                  borderRadius: 16,
+                  background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "24px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12,
+                  textAlign: "center",
+                  WebkitTapHighlightColor: "transparent",
+                  minHeight: 140,
+                }}
+              >
+                <div
+                  style={{
+                    width: 48, height: 48, borderRadius: "50%",
+                    background: "rgba(255,255,255,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", fontFamily: FONT, margin: 0, marginBottom: 4, lineHeight: 1.3 }}>
+                    내 레퍼런스 직접 저장하기
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontFamily: FONT, margin: 0, lineHeight: 1.5 }}>
+                    URL을 붙여넣어 바로 저장해봐요
+                  </p>
+                </div>
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <StepTitle text="첫 레퍼런스를 저장해봐요" />
+            <StepSub text={"저장할 때 이유를 남기면\n나중에 더 잘 꺼내줄 수 있어요."} />
+
+            {/* URL Input */}
+            <div style={{ marginBottom: 12 }}>
+              <div
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  background: "var(--redo-bg-input)", borderRadius: "var(--radius-button)",
+                  padding: "0 12px", height: 44, border: "0.5px solid var(--redo-border)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="var(--redo-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="var(--redo-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <input
+                  type="url"
+                  placeholder="레퍼런스 URL을 붙여넣어요"
+                  value={urlInput}
+                  onChange={(e) => onUrlChange(e.target.value)}
+                  style={{
+                    flex: 1, background: "none", border: "none", outline: "none",
+                    fontSize: "var(--text-body)", fontWeight: "var(--font-weight-regular)",
+                    color: "var(--redo-text-primary)", fontFamily: FONT, lineHeight: 1.4,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Thumbnail preview */}
             <div
               style={{
-                width: "100%",
-                height: "100%",
-                background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
+                height: thumbnailVisible ? 120 : 0,
+                borderRadius: 12, overflow: "hidden",
+                marginBottom: thumbnailVisible ? 12 : 0,
+                transition: "height 300ms ease, margin-bottom 300ms ease",
+                flexShrink: 0,
               }}
             >
-              {aiLoading ? (
-                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  {[0,1,2].map(i => (
-                    <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.8)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
-                  ))}
-                </div>
-              ) : (
-                <>
+              {thumbnailVisible && ogImage ? (
+                <img src={ogImage} alt="미리보기" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : thumbnailVisible ? (
+                <div
+                  style={{
+                    width: "100%", height: "100%",
+                    background: "linear-gradient(135deg, var(--redo-brand) 0%, var(--redo-brand-dark) 100%)",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}
+                >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <rect x="3" y="3" width="18" height="18" rx="3" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
                     <path d="M3 9h18" stroke="rgba(255,255,255,0.7)" strokeWidth="1.6" />
@@ -674,118 +753,83 @@ function Step2Screen({
                   <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: FONT, margin: 0 }}>
                     {urlInput.replace(/https?:\/\//, "").split("/")[0] || "링크 미리보기"}
                   </p>
-                </>
-              )}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-        </div>
 
-        {/* AI 추천 저장 이유 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <p style={{ fontSize: "var(--text-context-label)", fontWeight: "var(--font-weight-regular)", color: "var(--redo-text-tertiary)", fontFamily: FONT, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            AI 추천 저장 이유
-          </p>
-          {aiLoading && (
-            <div style={{ display: "flex", gap: 3 }}>
-              {[0,1,2].map(i => (
-                <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--redo-brand)", display: "inline-block", animation: `redo-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }} />
-              ))}
+            {/* Static chips */}
+            <p style={{ fontSize: "var(--text-context-label)", fontWeight: "var(--font-weight-regular)", color: "var(--redo-text-tertiary)", fontFamily: FONT, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              저장 이유 태그
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+              {STATIC_CHIPS.map((chip) => {
+                const selected = selectedChips.has(chip);
+                return (
+                  <button
+                    key={chip}
+                    onClick={() => onToggleChip(chip)}
+                    style={{
+                      height: 32, paddingLeft: 14, paddingRight: 14,
+                      borderRadius: "var(--radius-chip)",
+                      background: selected ? "var(--redo-brand-light)" : "var(--redo-bg-secondary)",
+                      border: selected ? "1px solid var(--redo-brand-mid)" : "0.5px solid var(--redo-border)",
+                      color: selected ? "var(--redo-context-text)" : "var(--redo-text-secondary)",
+                      fontSize: "var(--text-caption)",
+                      fontWeight: selected ? "var(--font-weight-medium)" : "var(--font-weight-regular)",
+                      fontFamily: FONT, cursor: "pointer", lineHeight: 1,
+                      transition: "all 150ms ease", WebkitTapHighlightColor: "transparent",
+                      flexShrink: 0, minHeight: 40,
+                    }}
+                  >
+                    {chip}
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
-          {(aiReasons.length > 0 ? aiReasons : ["영감을 받아서", "구조가 마음에 들어서", "나중에 참고하려고"]).map((chip) => {
-            const selected = selectedChips.has(chip);
-            return (
-              <button
-                key={chip}
-                onClick={() => onToggleChip(chip)}
+
+            {/* Context box / reason input */}
+            <div
+              style={{
+                background: "var(--redo-context-bg)", borderRadius: "var(--radius-context)",
+                padding: "10px 12px 12px", marginBottom: 8,
+              }}
+            >
+              <p
                 style={{
-                  height: 32,
-                  paddingLeft: 14,
-                  paddingRight: 14,
-                  borderRadius: "var(--radius-chip)",
-                  background: selected ? "var(--redo-brand-light)" : "var(--redo-bg-secondary)",
-                  border: selected ? "1px solid var(--redo-brand-mid)" : "0.5px solid var(--redo-border)",
-                  color: selected ? "var(--redo-context-text)" : "var(--redo-text-secondary)",
-                  fontSize: "var(--text-caption)",
-                  fontWeight: selected ? "var(--font-weight-medium)" : "var(--font-weight-regular)",
-                  fontFamily: FONT,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                  transition: "all 150ms ease",
-                  WebkitTapHighlightColor: "transparent",
-                  flexShrink: 0,
-                  minHeight: 40,
+                  fontSize: "var(--text-context-label)", fontWeight: "var(--font-weight-medium)",
+                  color: "var(--redo-context-label)", fontFamily: FONT,
+                  letterSpacing: "0.05em", textTransform: "uppercase",
+                  margin: 0, marginBottom: 6, lineHeight: 1.3,
                 }}
               >
-                {chip}
-              </button>
-            );
-          })}
-        </div>
+                저장 이유
+              </p>
+              <textarea
+                rows={3}
+                placeholder="이 레퍼런스를 왜 저장하는지 써봐요..."
+                value={savedReason}
+                onChange={(e) => onReasonChange(e.target.value)}
+                style={{
+                  width: "100%", background: "none", border: "none", outline: "none",
+                  resize: "none", fontSize: "var(--text-caption)",
+                  fontWeight: "var(--font-weight-regular)", color: "var(--redo-context-text)",
+                  fontFamily: FONT, lineHeight: 1.6, padding: 0, boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <p
+              style={{
+                fontSize: "var(--text-micro)", fontWeight: "var(--font-weight-regular)",
+                color: "var(--redo-text-tertiary)", fontFamily: FONT,
+                margin: 0, marginBottom: 24, lineHeight: 1.5,
+              }}
+            >
+              저장 이유가 있으면 더 잘 꺼내줄 수 있어요 💡
+            </p>
 
-        {/* Context box / reason input */}
-        <div
-          style={{
-            background: "var(--redo-context-bg)",
-            borderRadius: "var(--radius-context)",
-            padding: "10px 12px 12px",
-            marginBottom: 8,
-          }}
-        >
-          <p
-            style={{
-              fontSize: "var(--text-context-label)",
-              fontWeight: "var(--font-weight-medium)",
-              color: "var(--redo-context-label)",
-              fontFamily: FONT,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              margin: 0,
-              marginBottom: 6,
-              lineHeight: 1.3,
-            }}
-          >
-            저장 이유
-          </p>
-          <textarea
-            rows={3}
-            placeholder="이 레퍼런스를 왜 저장하는지 써봐요..."
-            value={savedReason}
-            onChange={(e) => onReasonChange(e.target.value)}
-            style={{
-              width: "100%",
-              background: "none",
-              border: "none",
-              outline: "none",
-              resize: "none",
-              fontSize: "var(--text-caption)",
-              fontWeight: "var(--font-weight-regular)",
-              color: "var(--redo-context-text)",
-              fontFamily: FONT,
-              lineHeight: 1.6,
-              padding: 0,
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-        <p
-          style={{
-            fontSize: "var(--text-micro)",
-            fontWeight: "var(--font-weight-regular)",
-            color: "var(--redo-text-tertiary)",
-            fontFamily: FONT,
-            fontStyle: "italic",
-            margin: 0,
-            marginBottom: 24,
-            lineHeight: 1.5,
-          }}
-        >
-          저장 이유가 있으면 나중에 더 잘 꺼내줄 수 있어
-        </p>
-
-        <CTAButton label="저장하기" onClick={onSave} />
+            <CTAButton label="저장하기" onClick={onSave} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -1854,6 +1898,9 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
     chips: [],
   });
 
+  // Step 2 mode: "choose" = 선택 카드, "direct" = URL 입력폼
+  const [step2Mode, setStep2Mode] = useState<"choose" | "direct">("choose");
+
   // Step 2 건너뛰기 여부 (→ Step 3에서 데모 카드 표시)
   const [skipped, setSkipped] = useState(false);
 
@@ -1992,18 +2039,19 @@ export function OnboardingScreen({ onComplete, forceMode, onSaveCard, onImportCa
 
       {phase === "step2" && (
         <Step2Screen
+          mode={step2Mode}
           urlInput={urlInput}
           onUrlChange={handleUrlChange}
           thumbnailVisible={thumbnailVisible}
+          ogImage={ogImage}
           selectedChips={selectedChips}
           onToggleChip={handleToggleChip}
           savedReason={savedReason}
           onReasonChange={setSavedReason}
           onSave={handleSave}
           onSkip={() => { setSkipped(true); advanceTo("step3"); }}
-          ogImage={ogImage}
-          aiReasons={aiReasons}
-          aiLoading={aiLoading}
+          onChooseDemo={() => { setSkipped(true); advanceTo("step3"); }}
+          onChooseDirect={() => setStep2Mode("direct")}
         />
       )}
 
