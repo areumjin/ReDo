@@ -527,7 +527,7 @@ function UrlInputRow({
   urlValue: string;
   setUrlValue: (v: string) => void;
   fetchState: FetchState;
-  onPaste: (url: string) => void;
+  onPaste: (url: string) => void; // URL이 감지될 때마다 호출 (paste + onChange)
   onClear: () => void;
 }) {
   const isActive = fetchState !== "idle";
@@ -595,7 +595,16 @@ function UrlInputRow({
       <input
         type="url"
         value={urlValue}
-        onChange={(e) => setUrlValue(e.target.value)}
+        onChange={(e) => {
+          const val = e.target.value;
+          setUrlValue(val);
+          // 모바일에서는 onPaste가 안 오고 onChange만 와서 붙여넣기 감지 불가.
+          // 한 번에 긴 URL이 들어온 경우(붙여넣기)만 fetch 트리거.
+          const trimmed = val.trim();
+          if (trimmed.length > 10 && isValidUrl(trimmed)) {
+            onPaste(trimmed);
+          }
+        }}
         onPaste={(e) => {
           const pasted = e.clipboardData.getData("text").trim();
           if (isValidUrl(pasted)) {
