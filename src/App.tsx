@@ -65,7 +65,7 @@ import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { getCurrentUser, onAuthStateChange, signOut } from "./lib/auth";
-import { getCards, saveCard } from "./lib/cardService";
+import { getCards, saveCard, deleteCard } from "./lib/cardService";
 import { supabase } from "./lib/supabase";
 
 type ActiveTab = "홈" | "보관" | "활용" | "기록";
@@ -178,16 +178,31 @@ export default function App() {
 
     // Check current session
     getCurrentUser()
-      .then((user) => {
+      .then(async (user) => {
         clearTimeout(timeout);
         if (user) {
           setCurrentUserId(user.id);
           setCurrentUserEmail(user.email ?? null);
-          if (forceOnboarding || !isAlreadyOnboarded) {
+          if (forceOnboarding) {
             goToScreen("onboarding");
-          } else {
+          } else if (isAlreadyOnboarded) {
             goToScreen("main");
             loadCardsFromSupabase();
+          } else {
+            // localStorage에 온보딩 기록이 없더라도,
+            // Supabase에 카드가 있으면 기존 유저 → 온보딩 스킵
+            try {
+              const existingCards = await getCards();
+              if (existingCards.length > 0) {
+                localStorage.setItem("redo_onboarded", "true");
+                setCards(existingCards);
+                goToScreen("main");
+              } else {
+                goToScreen("onboarding");
+              }
+            } catch {
+              goToScreen("onboarding");
+            }
           }
         } else {
           goToScreen("login");
@@ -324,14 +339,30 @@ export default function App() {
   };
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
-  const handleLoginSuccess = (userId: string) => {
+  const handleLoginSuccess = async (userId: string) => {
     setCurrentUserId(userId);
-    if (forceOnboarding || !isAlreadyOnboarded) {
+    if (forceOnboarding) {
       setOnboardingKey((k) => k + 1);
       setAppScreen("onboarding");
-    } else {
+    } else if (isAlreadyOnboarded) {
       setAppScreen("main");
       loadCardsFromSupabase();
+    } else {
+      // localStorage 기록 없어도 기존 카드 있으면 온보딩 스킵
+      try {
+        const existingCards = await getCards();
+        if (existingCards.length > 0) {
+          localStorage.setItem("redo_onboarded", "true");
+          setCards(existingCards);
+          setAppScreen("main");
+        } else {
+          setOnboardingKey((k) => k + 1);
+          setAppScreen("onboarding");
+        }
+      } catch {
+        setOnboardingKey((k) => k + 1);
+        setAppScreen("onboarding");
+      }
     }
   };
 
@@ -382,6 +413,15 @@ export default function App() {
 
   const handleEditCard = useCallback((id: number, updated: Partial<CardData>) => {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+  }, []);
+
+  const handleDeleteCard = useCallback((card: CardData) => {
+    setCards((prev) => prev.filter((c) => c.id !== card.id));
+    setEditSheetOpen(false);
+    // Supabase에서도 삭제
+    if (card.supabaseId) {
+      deleteCard(card.supabaseId).catch(console.error);
+    }
   }, []);
 
   // Global executed card IDs — persists across tab switches within the session
@@ -962,6 +1002,9 @@ export default function App() {
               card={editTargetCard}
               onSave={(updated) => {
                 if (editTargetCard) handleEditCard(editTargetCard.id, updated);
+              }}
+              onDelete={() => {
+                if (editTargetCard) handleDeleteCard(editTargetCard);
               }}
               onClose={() => setEditSheetOpen(false)}
               existingProjects={existingProjects}

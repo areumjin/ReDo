@@ -14,11 +14,12 @@ interface CardEditSheetProps {
   isOpen: boolean;
   card: CardData | null;
   onSave: (updated: Partial<CardData>) => void;
+  onDelete?: () => void;
   onClose: () => void;
   existingProjects?: string[];
 }
 
-export function CardEditSheet({ isOpen, card, onSave, onClose, existingProjects }: CardEditSheetProps) {
+export function CardEditSheet({ isOpen, card, onSave, onDelete, onClose, existingProjects }: CardEditSheetProps) {
   const allProjects = useMemo(() => {
     const base = [...PROJECTS];
     if (existingProjects) {
@@ -296,7 +297,11 @@ export function CardEditSheet({ isOpen, card, onSave, onClose, existingProjects 
 
           {/* 삭제 버튼 */}
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (window.confirm("이 레퍼런스를 삭제할까요?")) {
+                onDelete?.();
+              }
+            }}
             style={{
               width: "100%",
               height: 44,
