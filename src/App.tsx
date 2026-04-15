@@ -69,6 +69,7 @@ import { ContextRecommendScreen } from "./screens/ContextRecommendScreen";
 import { StationStatusScreen } from "./screens/StationStatusScreen";
 import { StationPairingScreen } from "./screens/StationPairingScreen";
 import { CompletionScreen } from "./screens/CompletionScreen";
+import { DevTestPanel } from "./components/DevTestPanel";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -1283,6 +1284,19 @@ export default function App() {
         </div>
       )}
     </div>
+
+    {/* Dev Test Panel — 개발 중에만 표시 (npm run build 시 제거됨) */}
+    {import.meta.env.DEV && (
+      <DevTestPanel
+        setIsNFCTriggered={setIsNFCTriggered}
+        setIsContextMode={setIsContextMode}
+        setIsStationStatusOpen={setIsStationStatusOpen}
+        setIsStationPairing={setIsStationPairing}
+        setIsCompletionOpen={setIsCompletionOpen}
+        setCurrentTab={handleTabChange}
+        setIsSaveSheetOpen={setSheetOpen}
+      />
+    )}
     </AppProvider>
   );
 }
