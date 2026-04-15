@@ -648,7 +648,7 @@ function EmptyMoodboard({ onFabPress }: { onFabPress?: () => void }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 interface HomeScreenProps {
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onCardTap?: (card: CardData) => void;
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
@@ -679,6 +679,7 @@ export function HomeScreen({
   const [sortOpen, setSortOpen] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<number[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("전체");
+  const [filterType, setFilterType] = useState<"태그" | "색상">("태그");
   const sortRef = useRef<HTMLDivElement>(null);
 
   const cardSource = cardsProp ?? ALL_CARDS;
@@ -757,6 +758,9 @@ export function HomeScreen({
     }
   })();
 
+  // 홈 무드보드에는 이미지가 있는 카드만 표시
+  const moodboardCards = sortedCards.filter((c) => !!c.image);
+
   return (
     <div
       className="flex flex-col relative overflow-hidden"
@@ -775,154 +779,154 @@ export function HomeScreen({
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "none", paddingBottom: 4 }}
       >
-        {/* ── 프로젝트 필터 탭 (PROMPT 9) ── */}
-        {projectTags.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "4px 12px 2px",
-              overflowX: "auto",
-              scrollbarWidth: "none",
-            }}
-          >
-            {["전체", ...projectTags].map((tag) => {
-              const isActive = selectedProject === tag;
-              return (
-                <button
-                  key={tag}
-                  onClick={() => setSelectedProject(tag)}
-                  style={{
-                    flexShrink: 0,
-                    height: 28,
-                    padding: "0 12px",
-                    borderRadius: 999,
-                    border: isActive ? "none" : "1px solid #6A70FF",
-                    background: isActive ? "#6A70FF" : "transparent",
-                    color: isActive ? "#fff" : "#6A70FF",
-                    fontSize: 12,
-                    fontWeight: isActive ? 600 : 400,
-                    cursor: "pointer",
-                    fontFamily: FONT,
-                    WebkitTapHighlightColor: "transparent",
-                    lineHeight: 1,
-                  }}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-            {/* 프로젝트 선택 시 작업대 바로가기 버튼 */}
-            {selectedProject !== "전체" && (
-              <button
-                onClick={() => onTabChange?.("작업대")}
-                style={{
-                  flexShrink: 0,
-                  height: 28,
-                  padding: "0 10px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: "transparent",
-                  color: "#6A70FF",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  fontFamily: FONT,
-                  WebkitTapHighlightColor: "transparent",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 2,
-                  marginLeft: "auto",
-                }}
-              >
-                작업대 보기
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Filter chips row + Sort button */}
+        {/* ── 통합 필터 행 (태그/색상 토글 + 필터 칩) ── */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 0,
-            padding: "6px 12px 6px",
+            gap: 8,
+            padding: "4px 12px 6px",
           }}
         >
-          {/* Scrollable color filter swatches */}
+          {/* 토글 버튼: 태그 | 색상 */}
           <div
             style={{
               display: "flex",
-              gap: 8,
+              background: "var(--redo-bg-secondary, #F1EFE8)",
+              borderRadius: 8,
+              padding: 2,
+              flexShrink: 0,
+            }}
+          >
+            {(["태그", "색상"] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                style={{
+                  height: 26,
+                  padding: "0 10px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: filterType === type ? "white" : "transparent",
+                  color: filterType === type ? "var(--redo-brand, #6A70FF)" : "var(--redo-text-secondary, #888780)",
+                  fontSize: 11,
+                  fontWeight: filterType === type ? 600 : 400,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  transition: "all 150ms ease",
+                  boxShadow: filterType === type ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  WebkitTapHighlightColor: "transparent",
+                  lineHeight: 1,
+                }}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
+          {/* 필터 칩들 */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
               overflowX: "auto",
-              overflowY: "visible",
               scrollbarWidth: "none",
-              flexWrap: "nowrap",
               flex: 1,
               minWidth: 0,
               alignItems: "center",
-              padding: "4px 0",
+              padding: "2px 0",
             }}
           >
-            {COLOR_FILTERS.map(({ label, swatch }) => {
-              const isActive = activeFilter === label;
-              if (label === "전체") {
+            {filterType === "태그" ? (
+              // 프로젝트 태그 필터
+              ["전체", ...projectTags].map((tag) => {
+                const isActive = selectedProject === tag;
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedProject(tag)}
+                    style={{
+                      flexShrink: 0,
+                      height: 28,
+                      minHeight: 36,
+                      padding: "0 12px",
+                      borderRadius: 999,
+                      border: isActive ? "none" : "1px solid rgba(106,112,255,0.35)",
+                      background: isActive ? "#6A70FF" : "transparent",
+                      color: isActive ? "#fff" : "#6A70FF",
+                      fontSize: 12,
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: "pointer",
+                      fontFamily: FONT,
+                      WebkitTapHighlightColor: "transparent",
+                      lineHeight: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      transition: "all 150ms ease",
+                    }}
+                  >
+                    {tag}
+                  </button>
+                );
+              })
+            ) : (
+              // 색상 필터
+              COLOR_FILTERS.map(({ label, swatch }) => {
+                const isActive = activeFilter === label;
+                if (label === "전체") {
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => setActiveFilter(label)}
+                      style={{
+                        height: 26,
+                        minHeight: 36,
+                        paddingLeft: 12,
+                        paddingRight: 12,
+                        borderRadius: 999,
+                        border: "none",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        fontSize: 12,
+                        fontWeight: isActive ? 600 : 400,
+                        fontFamily: FONT,
+                        background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
+                        color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
+                        transition: "all 150ms ease",
+                        display: "flex",
+                        alignItems: "center",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      전체
+                    </button>
+                  );
+                }
                 return (
                   <button
                     key={label}
                     onClick={() => setActiveFilter(label)}
+                    title={label}
                     style={{
+                      width: 26,
                       height: 26,
+                      minWidth: 36,
                       minHeight: 36,
-                      paddingLeft: 12,
-                      paddingRight: 12,
-                      borderRadius: 999,
-                      border: "none",
+                      borderRadius: "50%",
+                      border: isActive ? "3px solid #1A1A2E" : "3px solid transparent",
+                      boxSizing: "border-box",
                       cursor: "pointer",
                       flexShrink: 0,
-                      fontSize: 12,
-                      fontWeight: isActive ? 600 : 400,
-                      fontFamily: FONT,
-                      background: isActive ? "var(--redo-brand, #6A70FF)" : "var(--redo-bg-secondary, #F1EFE8)",
-                      color: isActive ? "#fff" : "var(--redo-text-secondary, #888780)",
-                      transition: "all 150ms ease",
-                      display: "flex",
-                      alignItems: "center",
+                      background: swatch,
+                      outline: "none",
+                      transition: "border 150ms ease, transform 100ms ease",
+                      transform: isActive ? "scale(1.1)" : "scale(1)",
                       WebkitTapHighlightColor: "transparent",
                     }}
-                  >
-                    전체
-                  </button>
+                  />
                 );
-              }
-              return (
-                <button
-                  key={label}
-                  onClick={() => setActiveFilter(label)}
-                  title={label}
-                  style={{
-                    width: 26,
-                    height: 26,
-                    minWidth: 36,
-                    minHeight: 36,
-                    borderRadius: "50%",
-                    border: isActive ? "3px solid #1A1A2E" : "3px solid transparent",
-                    boxSizing: "border-box",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    background: swatch,
-                    outline: "none",
-                    transition: "border 150ms ease, transform 100ms ease",
-                    transform: isActive ? "scale(1.1)" : "scale(1)",
-                    WebkitTapHighlightColor: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                />
-              );
-            })}
+              })
+            )}
           </div>
 
           {/* Sort button */}
@@ -1016,8 +1020,8 @@ export function HomeScreen({
           </div>
         </div>
 
-        {/* Moodboard grid or empty state */}
-        {sortedCards.length > 0 ? (
+        {/* Moodboard grid or empty state — 이미지 없는 카드는 무드보드에서 제외 */}
+        {moodboardCards.length > 0 ? (
           <div
             style={{
               columns: viewportWidth >= 1800 ? 6 : viewportWidth >= 1400 ? 5 : viewportWidth >= 1200 ? 4 : isMobile ? 2 : 3,
@@ -1025,7 +1029,7 @@ export function HomeScreen({
               padding: isDesktop ? "0 16px 16px" : "0 12px 12px",
             }}
           >
-            {sortedCards.map((card, index) => (
+            {moodboardCards.map((card, index) => (
               <MoodboardCard
                 key={card.id}
                 card={card}

@@ -1420,7 +1420,7 @@ function SourceDistCard({
 interface InsightsScreenProps {
   cards: CardData[];
   executedCardIds: Set<number>;
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onFabPress?: () => void;
   onCardTap?: (card: CardData) => void;
   userName?: string;

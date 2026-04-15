@@ -64,7 +64,6 @@ import { AIRecommendScreen } from "./screens/AIRecommendScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
-import { WorkbenchScreen } from "./screens/WorkbenchScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -81,7 +80,6 @@ const BACK_LABELS: Record<ActiveTab, string> = {
   보관: "보관함",
   활용: "활용",
   기록: "기록",
-  작업대: "작업대",
 };
 
 // ─── Onboarding gating ────────────────────────────────────────────────────────
@@ -963,13 +961,6 @@ export default function App() {
                   onFabPress={() => setSheetOpen(true)}
                   onCardTap={handleOpenDetail}
                   userName={userName ?? undefined}
-                />
-              )}
-              {activeTab === "작업대" && (
-                <WorkbenchScreen
-                  onCardTap={handleOpenDetail}
-                  onFabPress={() => setSheetOpen(true)}
-                  onTabChange={handleTabChange}
                 />
               )}
             </div>

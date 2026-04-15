@@ -45,6 +45,10 @@ if (typeof document !== "undefined" && !document.getElementById(DETAIL_STYLE_ID)
   document.head.appendChild(s);
 }
 
+// ─── AI 분석 결과 캐시 (모듈 레벨 — 세션 동안 유지) ──────────────────────────
+const fontCache = new Map<number, FontEntry[]>();
+const articleCache = new Map<number, ArticleSummary | "none">();
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FONT =
@@ -257,11 +261,17 @@ export function DetailScreen({
     return () => { cancelled = true; };
   }, [card?.image]);
 
-  // Identify fonts when card changes (image-based cards only)
+  // Identify fonts when card changes (image-based cards only) — 캐시 우선
   useEffect(() => {
     setFontData([]);
     setFontLoading(false);
-    if (!card?.image) return;
+    if (!card?.id || !card?.image) return;
+
+    // 이미 분석된 카드는 캐시에서 바로 반환
+    if (fontCache.has(card.id)) {
+      setFontData(fontCache.get(card.id)!);
+      return;
+    }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     if (!supabaseUrl) return;
@@ -279,6 +289,7 @@ export function DetailScreen({
       .then((data) => {
         if (cancelled) return;
         const fonts: FontEntry[] = Array.isArray(data?.fonts) ? data.fonts : [];
+        fontCache.set(card.id, fonts);
         setFontData(fonts);
         setFontLoading(false);
       })
@@ -289,7 +300,7 @@ export function DetailScreen({
     return () => { cancelled = true; };
   }, [card?.id, card?.image]);
 
-  // Summarize article when card changes (URL-based or no-image cards)
+  // Summarize article when card changes (URL-based or no-image cards) — 캐시 우선
   useEffect(() => {
     setArticleSummary(null);
     setArticleLoading(false);
@@ -298,6 +309,13 @@ export function DetailScreen({
     // Only for cards with a URL source but maybe no image
     const hasUrl = card.source && (card.source.startsWith("http://") || card.source.startsWith("https://"));
     if (!hasUrl) return;
+
+    // 이미 분석된 카드는 캐시에서 바로 반환
+    if (articleCache.has(card.id)) {
+      const cached = articleCache.get(card.id)!;
+      if (cached !== "none") setArticleSummary(cached);
+      return;
+    }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     if (!supabaseUrl) return;
@@ -319,11 +337,15 @@ export function DetailScreen({
       .then((data) => {
         if (cancelled) return;
         if (data?.summary) {
-          setArticleSummary({
+          const summary: ArticleSummary = {
             summary: data.summary,
             key_insights: Array.isArray(data.key_insights) ? data.key_insights : [],
             action_items: Array.isArray(data.action_items) ? data.action_items : [],
-          });
+          };
+          articleCache.set(card.id, summary);
+          setArticleSummary(summary);
+        } else {
+          articleCache.set(card.id, "none");
         }
         setArticleLoading(false);
       })
@@ -671,7 +693,7 @@ export function DetailScreen({
               background: "var(--redo-context-bg)",
               borderRadius: 10,
               padding: "10px 12px 12px",
-              marginBottom: 20,
+              marginBottom: card.urlValue ? 10 : 20,
             }}
           >
             <p
@@ -698,6 +720,61 @@ export function DetailScreen({
               {card.savedReason}
             </p>
           </div>
+
+          {/* 원본 URL 링크 */}
+          {card.urlValue && (
+            <a
+              href={card.urlValue}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 20,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "0.5px solid var(--redo-border)",
+                background: "var(--redo-bg-primary)",
+                textDecoration: "none",
+                color: "var(--redo-brand)",
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: FONT,
+                lineHeight: 1.4,
+                overflow: "hidden",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                원본 보기
+              </span>
+              <span style={{
+                fontSize: 11,
+                color: "var(--redo-text-tertiary)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "60%",
+              }}>
+                {(() => {
+                  try {
+                    return new URL(card.urlValue).hostname.replace("www.", "");
+                  } catch {
+                    return card.urlValue;
+                  }
+                })()}
+              </span>
+            </a>
+          )}
 
           {/* ── Color Palette ── */}
           {card.image && (paletteLoading || paletteColors.length > 0) && (

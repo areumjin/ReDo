@@ -371,7 +371,7 @@ export function WorkbenchScreen({
 
       {/* ── 바텀 네비 ── */}
       <BottomNav
-        activeTab="작업대"
+        activeTab="보관"
         onTabChange={onTabChange}
         onFabPress={onFabPress}
       />

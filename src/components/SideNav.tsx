@@ -48,15 +48,6 @@ const NAV_ITEMS: { tab: ActiveTab; label: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
-  {
-    tab: "작업대",
-    label: "작업대",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
-      </svg>
-    ),
-  },
 ];
 
 export function SideNav({ activeTab, onTabChange, onFabPress, onProfilePress, userName }: SideNavProps) {

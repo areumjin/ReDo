@@ -44,9 +44,13 @@ export interface PendingCardData {
 function TopBar({
   viewMode,
   onViewToggle,
+  selectionMode,
+  onToggleSelection,
 }: {
   viewMode: "grid" | "list";
   onViewToggle: (mode: "grid" | "list") => void;
+  selectionMode: boolean;
+  onToggleSelection: () => void;
 }) {
   return (
     <div
@@ -71,43 +75,66 @@ function TopBar({
         보관함
       </p>
 
-      <div style={{ display: "flex", gap: 4 }}>
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        {/* 선택 모드 토글 */}
         <button
-          onClick={() => onViewToggle("grid")}
+          onClick={onToggleSelection}
           style={{
-            width: 28, height: 28,
+            height: 28, padding: "0 10px",
             borderRadius: 7,
-            background: viewMode === "grid" ? "#EEEFFE" : "transparent",
-            border: "none", cursor: "pointer", padding: 0,
+            background: selectionMode ? "var(--redo-brand)" : "var(--redo-bg-secondary)",
+            border: "none", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.15s ease",
+            fontSize: 12,
+            fontWeight: selectionMode ? 600 : 400,
+            color: selectionMode ? "#fff" : "var(--redo-text-secondary)",
+            fontFamily: FONT,
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            {[["3","3"],["13","3"],["3","13"],["13","13"]].map(([x, y]) => (
-              <rect key={`${x}${y}`} x={x} y={y} width="8" height="8" rx="1.5"
-                fill={viewMode === "grid" ? "var(--redo-brand)" : "#B4B2A9"} />
-            ))}
-          </svg>
+          {selectionMode ? "취소" : "선택"}
         </button>
-        <button
-          onClick={() => onViewToggle("list")}
-          style={{
-            width: 28, height: 28,
-            borderRadius: 7,
-            background: viewMode === "list" ? "#EEEFFE" : "transparent",
-            border: "none", cursor: "pointer", padding: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.15s ease",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            {[["3","4"],["3","10.5"],["3","17"]].map(([x,y]) => (
-              <rect key={`${x}${y}`} x={x} y={y} width="18" height="3" rx="1.5"
-                fill={viewMode === "list" ? "var(--redo-brand)" : "#B4B2A9"} />
-            ))}
-          </svg>
-        </button>
+
+        {!selectionMode && (
+          <>
+            <button
+              onClick={() => onViewToggle("grid")}
+              style={{
+                width: 28, height: 28,
+                borderRadius: 7,
+                background: viewMode === "grid" ? "#EEEFFE" : "transparent",
+                border: "none", cursor: "pointer", padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                {[["3","3"],["13","3"],["3","13"],["13","13"]].map(([x, y]) => (
+                  <rect key={`${x}${y}`} x={x} y={y} width="8" height="8" rx="1.5"
+                    fill={viewMode === "grid" ? "var(--redo-brand)" : "#B4B2A9"} />
+                ))}
+              </svg>
+            </button>
+            <button
+              onClick={() => onViewToggle("list")}
+              style={{
+                width: 28, height: 28,
+                borderRadius: 7,
+                background: viewMode === "list" ? "#EEEFFE" : "transparent",
+                border: "none", cursor: "pointer", padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                {[["3","4"],["3","10.5"],["3","17"]].map(([x,y]) => (
+                  <rect key={`${x}${y}`} x={x} y={y} width="18" height="3" rx="1.5"
+                    fill={viewMode === "list" ? "var(--redo-brand)" : "#B4B2A9"} />
+                ))}
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -203,7 +230,7 @@ function FilterChipsRow({
         <div className="flex items-center" style={{ gap: 6, width: "max-content" }}>
           {chips.map((chip) => {
             const isActive = activeFilters.includes(chip);
-            const isStatusChip = chip === "미실행";
+            const isStatusChip = chip === "미실행" || chip === "실행완료";
             const isAllChip = chip === "전체";
             const isProjectChip = !isStatusChip && !isAllChip;
             const bg = isActive
@@ -335,6 +362,8 @@ function GridCard({
   newDotOpacity = 0,
   executedCardIds,
   folderColors,
+  isSelected = false,
+  onSelect,
 }: {
   card: CardData;
   onTap?: () => void;
@@ -342,6 +371,8 @@ function GridCard({
   newDotOpacity?: number;
   executedCardIds?: Set<number>;
   folderColors?: Record<string, string>;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }) {
   const isDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
   const dotColor = isDone ? "var(--redo-success)" : "var(--redo-brand)";
@@ -353,16 +384,16 @@ function GridCard({
       style={{
         background: "var(--redo-bg-primary)",
         borderRadius: "var(--radius-card)",
-        border: "0.5px solid var(--redo-border)",
+        border: isSelected ? "2px solid var(--redo-brand)" : "0.5px solid var(--redo-border)",
         overflow: "hidden",
-        boxShadow: !isMobile && hovered ? "0 4px 16px rgba(0,0,0,0.12)" : "0 1px 6px rgba(0,0,0,0.05)",
+        boxShadow: isSelected ? "0 0 0 3px rgba(106,112,255,0.15)" : (!isMobile && hovered ? "0 4px 16px rgba(0,0,0,0.12)" : "0 1px 6px rgba(0,0,0,0.05)"),
         opacity: 1,
-        transition: "opacity 0.1s, box-shadow 150ms, transform 150ms",
-        transform: !isMobile && hovered ? "translateY(-2px)" : "none",
+        transition: "opacity 0.1s, box-shadow 150ms, transform 150ms, border 150ms",
+        transform: !isMobile && hovered && !onSelect ? "translateY(-2px)" : "none",
         cursor: "pointer",
         position: "relative",
       }}
-      onClick={onTap}
+      onClick={onSelect ?? onTap}
       onPointerDown={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "0.88")}
       onPointerUp={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "1")}
       onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = "1"; setHovered(false); }}
@@ -370,7 +401,7 @@ function GridCard({
       onMouseLeave={() => setHovered(false)}
     >
       {/* Thumbnail */}
-      <div className="relative w-full" style={{ height: isMobile ? 88 : 140, position: "relative" }}>
+      <div className="relative w-full" style={{ height: isMobile ? 88 : 140, position: "relative", flexShrink: 0 }}>
         {card.image ? (
           <ImageWithFallback
             src={card.image}
@@ -405,15 +436,32 @@ function GridCard({
           </span>
         </div>
 
-        {/* Status dot — top right */}
-        <div style={{
-          position: "absolute", top: 8, right: 8,
-          width: 16, height: 16, borderRadius: "50%",
-          background: "rgba(255,255,255,0.88)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, transition: "background 150ms ease" }} />
-        </div>
+        {/* Selection checkbox or status dot — top right */}
+        {onSelect ? (
+          <div style={{
+            position: "absolute", top: 8, right: 8,
+            width: 20, height: 20, borderRadius: "50%",
+            background: isSelected ? "var(--redo-brand)" : "rgba(255,255,255,0.9)",
+            border: isSelected ? "none" : "1.5px solid rgba(0,0,0,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 150ms ease",
+          }}>
+            {isSelected && (
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            position: "absolute", top: 8, right: 8,
+            width: 16, height: 16, borderRadius: "50%",
+            background: "rgba(255,255,255,0.88)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, transition: "background 150ms ease" }} />
+          </div>
+        )}
       </div>
 
       {/* Card body */}
@@ -456,16 +504,16 @@ function GridCard({
 
 // ─── List Card ────────────────────────────────────────────────────────────────
 
-function ListCard({ card, onTap, executedCardIds, folderColors }: { card: CardData; onTap?: () => void; executedCardIds?: Set<number>; folderColors?: Record<string, string> }) {
+function ListCard({ card, onTap, executedCardIds, folderColors, isSelected }: { card: CardData; onTap?: () => void; executedCardIds?: Set<number>; folderColors?: Record<string, string>; isSelected?: boolean }) {
   const isDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
   const dotColor = isDone ? "var(--redo-success)" : "var(--redo-brand)";
 
   return (
     <div style={{
       background: "var(--redo-bg-primary)",
-      borderRadius: "var(--radius-card)", border: "0.5px solid var(--redo-border)",
-      overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
-      opacity: 1, transition: "opacity 0.1s", cursor: "pointer",
+      borderRadius: "var(--radius-card)", border: isSelected ? "2px solid var(--redo-brand)" : "0.5px solid var(--redo-border)",
+      overflow: "hidden", boxShadow: isSelected ? "0 0 0 3px rgba(106,112,255,0.12)" : "0 1px 6px rgba(0,0,0,0.05)",
+      opacity: 1, transition: "opacity 0.1s, border 150ms, box-shadow 150ms", cursor: "pointer",
       display: "flex", alignItems: "center", gap: 10,
       padding: "10px 12px 10px 10px",
     }}
@@ -518,7 +566,7 @@ function ListCard({ card, onTap, executedCardIds, folderColors }: { card: CardDa
 // ─── Archive Screen ───────────────────────────────────────────────────────────
 
 interface ArchiveScreenProps {
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onCardTap?: (card: CardData) => void;
   onFabPress?: () => void;
   pendingCard?: PendingCardData | null;
@@ -545,11 +593,13 @@ export function ArchiveScreen({
   const { isMobile, isDesktop } = useBreakpoint();
   const cardSource = cardsProp ?? ALL_CARDS;
   const projectTags = useMemo(() => Array.from(new Set(cardSource.map(c => c.projectTag))), [cardSource]);
-  const FILTER_CHIPS = useMemo(() => ["전체", ...projectTags, "미실행"], [projectTags]);
+  const FILTER_CHIPS = useMemo(() => ["미실행", "실행완료", "전체", ...projectTags], [projectTags]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<string[]>(["전체", "미실행"]);
+  const [activeFilters, setActiveFilters] = useState<string[]>(["미실행"]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(new Set());
   const [sortOrder, setSortOrder] = useState<SortOrder>("최신순");
 
   // ── Debounce search input 150ms ──────────────────────────────────────────
@@ -686,22 +736,61 @@ export function ArchiveScreen({
       ? { transform: "translateY(0)", transition: "transform 200ms ease-out" }
       : {};
 
+  // ── Selection mode ──
+  const toggleSelectionMode = () => {
+    setSelectionMode((v) => {
+      if (v) setSelectedCardIds(new Set()); // 취소 시 선택 해제
+      return !v;
+    });
+  };
+
+  const toggleCardSelection = (id: number) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleFigmaExport = () => {
+    const selected = sortedFiltered.filter((c) => selectedCardIds.has(c.id));
+    if (selected.length === 0) return;
+    const text = selected.map((c) =>
+      `[${c.projectTag}] ${c.title}\n저장 이유: ${c.savedReason}\n태그: ${c.chips.join(", ")}\n${c.urlValue ? `URL: ${c.urlValue}` : ""}`
+    ).join("\n\n---\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      alert(`${selected.length}개 레퍼런스를 클립보드에 복사했어요.\nFigma에서 붙여넣어 사용하세요.`);
+    });
+  };
+
   // ── Filter logic ──
   const toggleFilter = (chip: string) => {
     if (chip === "전체") {
-      setActiveFilters(activeFilters.includes("전체") ? [] : ["전체"]);
+      setActiveFilters(["전체"]);
+      return;
+    }
+    // 미실행 / 실행완료: 상호 배타적 상태 필터
+    if (chip === "미실행" || chip === "실행완료") {
+      setActiveFilters((prev) => {
+        const otherStatus = chip === "미실행" ? "실행완료" : "미실행";
+        const withoutStatus = prev.filter((f) => f !== "미실행" && f !== "실행완료" && f !== "전체");
+        return prev.includes(chip)
+          ? withoutStatus // 이미 선택된 것 클릭 → 해제 (전체 표시)
+          : [...withoutStatus.filter((f) => f !== otherStatus), chip];
+      });
       return;
     }
     setActiveFilters((prev) => {
-      const without전체 = prev.filter((f) => f !== "전체");
-      return without전체.includes(chip)
-        ? without전체.filter((f) => f !== chip)
-        : [...without전체, chip];
+      const withoutAll = prev.filter((f) => f !== "전체");
+      return withoutAll.includes(chip)
+        ? withoutAll.filter((f) => f !== chip)
+        : [...withoutAll, chip];
     });
   };
 
   const resetFilters = useCallback(() => {
-    setActiveFilters(["전체"]);
+    setActiveFilters(["미실행"]);
     setSearchValue("");
     setDebouncedSearch("");
   }, []);
@@ -719,16 +808,18 @@ export function ArchiveScreen({
     if (activeFilters.includes("전체") || activeFilters.length === 0) return matchesSearch;
 
     // 폴더 필터: activeFilters 중 실제 projectTag인 것만 필터링
-    const projectFilters = activeFilters.filter((f) => f !== "전체" && f !== "미실행");
+    const projectFilters = activeFilters.filter((f) => f !== "전체" && f !== "미실행" && f !== "실행완료");
     const matchesProject =
       projectFilters.length === 0 ||
       projectFilters.includes(card.projectTag);
 
     const effectiveDone = (executedCardIds?.has(card.id) ?? false) || card.statusDot === "실행완료";
-    const matchesStatus =
-      !activeFilters.includes("미실행") || !effectiveDone;
+    // 미실행 필터: 미실행인 것만 표시
+    const matchesUnexecuted = !activeFilters.includes("미실행") || !effectiveDone;
+    // 실행완료 필터: 실행완료인 것만 표시
+    const matchesExecuted = !activeFilters.includes("실행완료") || effectiveDone;
 
-    return matchesSearch && matchesProject && matchesStatus;
+    return matchesSearch && matchesProject && matchesUnexecuted && matchesExecuted;
   });
 
   // Apply sort order
@@ -795,7 +886,7 @@ export function ArchiveScreen({
 
       {/* Sticky header */}
       <div className="shrink-0" style={{ background: "var(--redo-bg-primary)" }}>
-        <TopBar viewMode={viewMode} onViewToggle={setViewMode} />
+        <TopBar viewMode={viewMode} onViewToggle={setViewMode} selectionMode={selectionMode} onToggleSelection={toggleSelectionMode} />
         <SearchBar value={searchValue} onChange={setSearchValue} />
         <FilterChipsRow
           activeFilters={activeFilters}
@@ -844,7 +935,7 @@ export function ArchiveScreen({
               display: "grid",
               gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
               gap: 10,
-              overflow: "visible",
+              alignItems: "start",
             }}
           >
             {/* Optimistic pending card — always first */}
@@ -877,7 +968,14 @@ export function ArchiveScreen({
             {/* Existing cards */}
             {sortedFiltered.map((card) => (
               <div key={card.id} style={existingStyle}>
-                <GridCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} folderColors={folderColors} />
+                <GridCard
+                  card={card}
+                  onTap={selectionMode ? undefined : () => onCardTap?.(card)}
+                  executedCardIds={executedCardIds}
+                  folderColors={folderColors}
+                  isSelected={selectedCardIds.has(card.id)}
+                  onSelect={selectionMode ? () => toggleCardSelection(card.id) : undefined}
+                />
               </div>
             ))}
           </div>
@@ -905,7 +1003,13 @@ export function ArchiveScreen({
             )}
             {sortedFiltered.map((card) => (
               <div key={card.id} style={existingStyle}>
-                <ListCard card={card} onTap={() => onCardTap?.(card)} executedCardIds={executedCardIds} folderColors={folderColors} />
+                <ListCard
+                  card={card}
+                  onTap={selectionMode ? () => toggleCardSelection(card.id) : () => onCardTap?.(card)}
+                  executedCardIds={executedCardIds}
+                  folderColors={folderColors}
+                  isSelected={selectedCardIds.has(card.id)}
+                />
               </div>
             ))}
           </div>
@@ -914,7 +1018,79 @@ export function ArchiveScreen({
         <div style={{ height: 80 }} />
       </div>
 
-      <BottomNav activeTab="보관" onTabChange={onTabChange} onFabPress={onFabPress} />
+      {/* ── 선택 모드 Figma 내보내기 바 ── */}
+      {selectionMode && (
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "12px 16px",
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+          background: "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(16px)",
+          borderTop: "0.5px solid var(--redo-border)",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          zIndex: 40,
+        }}>
+          <span style={{
+            fontSize: 13,
+            color: "var(--redo-text-secondary)",
+            fontFamily: FONT,
+            flex: 1,
+          }}>
+            {selectedCardIds.size > 0 ? `${selectedCardIds.size}개 선택됨` : "카드를 선택하세요"}
+          </span>
+          <button
+            onClick={() => {
+              sortedFiltered.forEach((c) => {
+                setSelectedCardIds((prev) => new Set([...prev, c.id]));
+              });
+            }}
+            style={{
+              height: 40, padding: "0 14px",
+              borderRadius: 10,
+              border: "1px solid var(--redo-border)",
+              background: "transparent",
+              color: "var(--redo-text-secondary)",
+              fontSize: 13,
+              fontWeight: 400,
+              cursor: "pointer",
+              fontFamily: FONT,
+            }}
+          >
+            전체 선택
+          </button>
+          <button
+            onClick={handleFigmaExport}
+            disabled={selectedCardIds.size === 0}
+            style={{
+              height: 40, padding: "0 16px",
+              borderRadius: 10,
+              border: "none",
+              background: selectedCardIds.size === 0 ? "var(--redo-bg-secondary)" : "var(--redo-brand)",
+              color: selectedCardIds.size === 0 ? "var(--redo-text-tertiary)" : "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: selectedCardIds.size === 0 ? "default" : "pointer",
+              fontFamily: FONT,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "background 150ms, color 150ms",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M8 17l4 4 4-4M12 12v9M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Figma로 내보내기
+          </button>
+        </div>
+      )}
+
+      <BottomNav activeTab="보관" onTabChange={onTabChange} onFabPress={selectionMode ? undefined : onFabPress} />
     </div>
   );
 }

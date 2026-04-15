@@ -7,7 +7,7 @@ import type { CardData } from "../types";
 import type { ToastConfig } from "../components/Toast";
 
 // ─── ActiveTab — 단일 정의 (App, BottomNav, SideNav 모두 여기서 import) ──────
-export type ActiveTab = "홈" | "보관" | "활용" | "기록" | "작업대";
+export type ActiveTab = "홈" | "보관" | "활용" | "기록";
 
 // ─── Context 값 인터페이스 ────────────────────────────────────────────────────
 export interface AppContextValue {

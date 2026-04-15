@@ -2,13 +2,12 @@ import { useState, useRef, useCallback } from "react";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import type { ActiveTab } from "../context/AppContext";
 
-// 아이콘 경로 — "작업대"는 4분할 그리드 아이콘
+// 아이콘 경로
 const ICON_PATHS: Record<string, string> = {
   홈: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
   보관: "M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z",
   활용: "M8 5.14v14l11-7-11-7z",
-  작업대:
-    "M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z",
+  기록: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z",
 };
 
 // ─── FAB 애니메이션 ────────────────────────────────────────────────────────────
@@ -226,8 +225,8 @@ export function BottomNav({ activeTab, onTabChange, onFabPress }: BottomNavProps
       {/* 활용 */}
       <TabButton tab="활용" isActive={activeTab === "활용"} onTabChange={onTabChange} />
 
-      {/* 작업대 (기록 대신) */}
-      <TabButton tab="작업대" isActive={activeTab === "작업대"} onTabChange={onTabChange} />
+      {/* 기록 */}
+      <TabButton tab="기록" isActive={activeTab === "기록"} onTabChange={onTabChange} />
     </div>
   );
 }

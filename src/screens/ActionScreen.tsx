@@ -209,8 +209,8 @@ function FrontCard({
           flexDirection: "column",
         }}
       >
-        {/* Thumbnail */}
-        <div className="relative w-full shrink-0" style={{ height: typeof window !== "undefined" && window.innerWidth >= 768 ? 200 : 140 }}>
+        {/* Thumbnail — 이미지 영역 강조 */}
+        <div className="relative w-full shrink-0" style={{ height: typeof window !== "undefined" && window.innerWidth >= 768 ? 260 : 180 }}>
           <ImageWithFallback
             src={card.image}
             alt={card.title}
@@ -605,7 +605,7 @@ function NoCardsState({ onFabPress }: { onFabPress?: () => void }) {
 
 interface ActionScreenProps {
   cards?: CardData[];
-  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록" | "작업대") => void;
+  onTabChange?: (tab: "홈" | "보관" | "활용" | "기록") => void;
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
   onExecuteCard?: (id: number) => void;
