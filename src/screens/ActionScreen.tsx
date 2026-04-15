@@ -772,9 +772,10 @@ interface ActionScreenProps {
   onFabPress?: () => void;
   executedCardIds?: Set<number>;
   onExecuteCard?: (id: number) => void;
+  onAllComplete?: (stats: { executed: number; skipped: number }) => void;
 }
 
-export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCardIds, onExecuteCard }: ActionScreenProps) {
+export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCardIds, onExecuteCard, onAllComplete }: ActionScreenProps) {
   const { isMobile, isDesktop } = useBreakpoint();
   // ── Derive swipe deck ONCE at mount — frozen for this session ──────────
   // Excludes cards already marked 실행완료, plus any executed
@@ -789,6 +790,8 @@ export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCard
   const [currentIndex, setCurrentIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [dragX, setDragX] = useState(0);
+  const [sessionExecuted, setSessionExecuted] = useState(0);
+  const [sessionSkipped, setSessionSkipped] = useState(0);
 
   // Hint label refs — we write colors directly to avoid re-renders on drag
   const hintSkipRef = useRef<HTMLSpanElement>(null);
@@ -807,6 +810,14 @@ export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCard
   const preloadCard = swipeCards[currentIndex + 2];
   const isExiting =
     phase === "exit-left" || phase === "exit-right" || phase === "exit-up";
+
+  // Fire onAllComplete when deck is exhausted (only if we processed at least 1 card)
+  useEffect(() => {
+    if (isDone && swipeCards.length > 0 && (sessionExecuted > 0 || sessionSkipped > 0)) {
+      onAllComplete?.({ executed: sessionExecuted, skipped: sessionSkipped });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone]);
 
   // Remaining count: decrement immediately when exiting
   const remaining = swipeCards.length - currentIndex;
@@ -868,6 +879,9 @@ export function ActionScreen({ cards = [], onTabChange, onFabPress, executedCard
         // can update executedCardIds for the next session
         if (dir === "right" && currentCard) {
           onExecuteCard?.(currentCard.id);
+          setSessionExecuted((n) => n + 1);
+        } else if (dir === "left") {
+          setSessionSkipped((n) => n + 1);
         }
         setCurrentIndex((i) => i + 1);
         setPhase("idle");

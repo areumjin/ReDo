@@ -68,6 +68,7 @@ import { NFCTriggerScreen } from "./screens/NFCTriggerScreen";
 import { ContextRecommendScreen } from "./screens/ContextRecommendScreen";
 import { StationStatusScreen } from "./screens/StationStatusScreen";
 import { StationPairingScreen } from "./screens/StationPairingScreen";
+import { CompletionScreen } from "./screens/CompletionScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -155,6 +156,10 @@ export default function App() {
 
   // ── Station Status state ──────────────────────────────────────────────
   const [isStationStatusOpen, setIsStationStatusOpen] = useState(false);
+
+  // ── Completion Screen state ────────────────────────────────────────────
+  const [isCompletionOpen, setIsCompletionOpen] = useState(false);
+  const [completionStats, setCompletionStats] = useState({ executed: 0, skipped: 0 });
 
   // ── Station Pairing state (최초 NFC 감지 시 1회만) ────────────────────
   const [isStationPairing, setIsStationPairing] = useState(() => {
@@ -968,6 +973,10 @@ export default function App() {
                   onFabPress={() => setSheetOpen(true)}
                   executedCardIds={executedCardIds}
                   onExecuteCard={handleExecuteCard}
+                  onAllComplete={(stats) => {
+                    setCompletionStats(stats);
+                    setIsCompletionOpen(true);
+                  }}
                 />
               )}
               {activeTab === "보관" && (
@@ -1207,6 +1216,23 @@ export default function App() {
                 onExecuteNow={() => {
                   setIsStationStatusOpen(false);
                   setActiveTab("활용");
+                }}
+              />
+            )}
+
+            {/* Completion Screen — 미실행 0개 달성 보상 (z-index: 75) */}
+            {isCompletionOpen && (
+              <CompletionScreen
+                executedCount={completionStats.executed}
+                skippedCount={completionStats.skipped}
+                totalCards={cards.length}
+                onSaveNew={() => {
+                  setIsCompletionOpen(false);
+                  setSheetOpen(true);
+                }}
+                onGoHome={() => {
+                  setIsCompletionOpen(false);
+                  setActiveTab("홈");
                 }}
               />
             )}
