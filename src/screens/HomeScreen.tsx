@@ -4,6 +4,7 @@ import { BottomNav } from "../components/AppBottomNav";
 import { ALL_CARDS, type CardData } from "../types";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { sortByRelevance, buildContext } from "../lib/relevanceScore";
+import { MiniSeesaw, getTiltDeg } from "./StationStatusScreen";
 
 // ─── Keyframe injection ───────────────────────────────────────────────────────
 
@@ -656,6 +657,7 @@ interface HomeScreenProps {
   laterCardIds?: Set<number>;
   onLater?: (id: number) => void;
   onProfilePress?: () => void;
+  onStationBannerTap?: () => void;
   cards?: CardData[];
   userName?: string;
 }
@@ -669,6 +671,7 @@ export function HomeScreen({
   onFabPress,
   executedCardIds,
   onProfilePress,
+  onStationBannerTap,
   cards: cardsProp,
   userName,
 }: HomeScreenProps) {
@@ -779,6 +782,34 @@ export function HomeScreen({
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "none", paddingBottom: 4 }}
       >
+        {/* ── Station 상태 미니 배너 ── */}
+        {onStationBannerTap && (
+          <div
+            onClick={onStationBannerTap}
+            style={{
+              margin: "4px 12px 6px",
+              height: 52,
+              background: "white",
+              border: "0.5px solid #EBEBEB",
+              borderRadius: 10,
+              display: "flex",
+              alignItems: "center",
+              padding: "0 14px",
+              gap: 10,
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <MiniSeesaw tiltDeg={getTiltDeg(unexecutedCount)} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--redo-text-primary)", fontFamily: FONT, flex: 1 }}>
+              미실행 {unexecutedCount}개
+            </span>
+            <span style={{ fontSize: 12, color: "#6A70FF", fontWeight: 500, fontFamily: FONT, whiteSpace: "nowrap" }}>
+              현황 보기 &gt;
+            </span>
+          </div>
+        )}
+
         {/* ── 통합 필터 행 (태그/색상 토글 + 필터 칩) ── */}
         <div
           style={{

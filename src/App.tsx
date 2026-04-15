@@ -66,6 +66,7 @@ import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { NFCTriggerScreen } from "./screens/NFCTriggerScreen";
 import { ContextRecommendScreen } from "./screens/ContextRecommendScreen";
+import { StationStatusScreen } from "./screens/StationStatusScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -150,6 +151,9 @@ export default function App() {
 
   // ── Context Recommend state ─────────────────────────────────────────────
   const [isContextMode, setIsContextMode] = useState(isContextFromUrl);
+
+  // ── Station Status state ──────────────────────────────────────────────
+  const [isStationStatusOpen, setIsStationStatusOpen] = useState(false);
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -944,6 +948,7 @@ export default function App() {
                     laterCardIds={laterCardIds}
                     onLater={handleLaterCard}
                     onProfilePress={() => setSettingsVisible(true)}
+                    onStationBannerTap={() => setIsStationStatusOpen(true)}
                     cards={cards}
                     userName={userName ?? undefined}
                   />
@@ -1183,6 +1188,19 @@ export default function App() {
                 }}
                 onExecuteCard={handleExecuteCard}
                 showToast={showToast}
+              />
+            )}
+
+            {/* Station Status Screen — 바텀시트 오버레이 (z-index: 68) */}
+            {isStationStatusOpen && (
+              <StationStatusScreen
+                cards={cards}
+                executedCardIds={executedCardIds}
+                onClose={() => setIsStationStatusOpen(false)}
+                onExecuteNow={() => {
+                  setIsStationStatusOpen(false);
+                  setActiveTab("활용");
+                }}
               />
             )}
           </>
