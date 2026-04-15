@@ -64,6 +64,7 @@ import { AIRecommendScreen } from "./screens/AIRecommendScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { NFCTriggerScreen } from "./screens/NFCTriggerScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -97,8 +98,11 @@ const sharedTitle = searchParams.get("title") ?? null;
 const fromShareCache = searchParams.get("fromShare") === "1";
 const isFromShare = !!(sharedUrl) || fromShareCache;
 
+// ─── NFC Trigger param ───────────────────────────────────────────────────────
+const isNFCFromUrl = searchParams.get("nfc") === "true";
+
 // URL 파라미터를 즉시 제거 — 뒤로가기 시 바텀시트가 다시 열리지 않도록
-if (sharedUrl || fromShareCache) {
+if (sharedUrl || fromShareCache || isNFCFromUrl) {
   window.history.replaceState({}, "", "/");
 }
 
@@ -136,6 +140,9 @@ export default function App() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [importVisible, setImportVisible] = useState(false);
   const [sheetInitialImageUrl, setSheetInitialImageUrl] = useState<string | undefined>(undefined);
+
+  // ── NFC Trigger state ─────────────────────────────────────────────────────
+  const [isNFCTriggered, setIsNFCTriggered] = useState(isNFCFromUrl);
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -1142,6 +1149,20 @@ export default function App() {
               onClose={() => setEditSheetOpen(false)}
               existingProjects={existingProjects}
             />
+
+            {/* NFC Trigger Screen — 전체 화면 오버레이 (z-index: 70) */}
+            {isNFCTriggered && (
+              <NFCTriggerScreen
+                cards={cards}
+                executedCardIds={executedCardIds}
+                onExecuteNow={(projectTag) => {
+                  setIsNFCTriggered(false);
+                  setActiveTab("활용");
+                  // 프로젝트 필터 자동 적용은 ActionScreen이 마운트될 때 처리
+                }}
+                onDismiss={() => setIsNFCTriggered(false)}
+              />
+            )}
           </>
         )}
       </div>
