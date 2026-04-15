@@ -67,6 +67,7 @@ import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { NFCTriggerScreen } from "./screens/NFCTriggerScreen";
 import { ContextRecommendScreen } from "./screens/ContextRecommendScreen";
 import { StationStatusScreen } from "./screens/StationStatusScreen";
+import { StationPairingScreen } from "./screens/StationPairingScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -154,6 +155,12 @@ export default function App() {
 
   // ── Station Status state ──────────────────────────────────────────────
   const [isStationStatusOpen, setIsStationStatusOpen] = useState(false);
+
+  // ── Station Pairing state (최초 NFC 감지 시 1회만) ────────────────────
+  const [isStationPairing, setIsStationPairing] = useState(() => {
+    // NFC 트리거로 들어왔는데 아직 페어링 안 된 경우
+    return isNFCFromUrl && localStorage.getItem("redo_station_paired") !== "true";
+  });
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -1201,6 +1208,19 @@ export default function App() {
                   setIsStationStatusOpen(false);
                   setActiveTab("활용");
                 }}
+              />
+            )}
+
+            {/* Station Pairing Screen — 최초 NFC 페어링 (z-index: 80) */}
+            {isStationPairing && (
+              <StationPairingScreen
+                onComplete={(threshold) => {
+                  localStorage.setItem("redo_station_paired", "true");
+                  localStorage.setItem("redo_station_threshold", String(threshold));
+                  setIsStationPairing(false);
+                  showToast({ variant: "success", sourceChip: "Station이 연결됐어요 ✓" });
+                }}
+                onDismiss={() => setIsStationPairing(false)}
               />
             )}
           </>
