@@ -553,6 +553,7 @@ export default function App() {
     imageUrl,
     chips,
     source,
+    deadline,
   }: {
     projectTag: string;
     urlValue: string;
@@ -561,6 +562,7 @@ export default function App() {
     imageUrl?: string | null;
     chips?: string[];
     source?: string;
+    deadline?: string;
   }) => {
     setTimeout(async () => {
       const normalizedUrl = urlValue.trim().toLowerCase();
@@ -590,6 +592,7 @@ export default function App() {
           processingStatus: "processing",
           contentType: detectContentType(urlValue),
           urlValue: urlValue || "",
+          deadline: deadline || undefined,
         };
         setCards((prev) => [newCard, ...prev]);
         setPendingStatus("confirmed");

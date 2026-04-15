@@ -262,7 +262,7 @@ export function ExecutionMemoSheet({
               textAlign: "center",
             }}
           >
-            작업대로 가져가기
+            실행 메모
           </p>
           <p
             style={{
@@ -276,7 +276,7 @@ export function ExecutionMemoSheet({
               textAlign: "center",
             }}
           >
-            이 레퍼런스를 지금 작업 옆에 펼쳐둬요
+            어떻게 실행했는지 기록해봐요
           </p>
 
           {/* ── aiAnalysis 재료 영역 ── */}
@@ -484,7 +484,7 @@ export function ExecutionMemoSheet({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              작업대로 이동
+              저장하고 완료
             </button>
           </div>
         </div>

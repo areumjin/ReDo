@@ -47,8 +47,8 @@ function TopBar({
   selectionMode,
   onToggleSelection,
 }: {
-  viewMode: "grid" | "list";
-  onViewToggle: (mode: "grid" | "list") => void;
+  viewMode: "grid" | "list" | "calendar";
+  onViewToggle: (mode: "grid" | "list" | "calendar") => void;
   selectionMode: boolean;
   onToggleSelection: () => void;
 }) {
@@ -131,6 +131,22 @@ function TopBar({
                   <rect key={`${x}${y}`} x={x} y={y} width="18" height="3" rx="1.5"
                     fill={viewMode === "list" ? "var(--redo-brand)" : "#B4B2A9"} />
                 ))}
+              </svg>
+            </button>
+            <button
+              onClick={() => onViewToggle("calendar")}
+              style={{
+                width: 28, height: 28,
+                borderRadius: 7,
+                background: viewMode === "calendar" ? "#EEEFFE" : "transparent",
+                border: "none", cursor: "pointer", padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="18" rx="2" stroke={viewMode === "calendar" ? "var(--redo-brand)" : "#B4B2A9"} strokeWidth="1.8" />
+                <path d="M16 2v4M8 2v4M3 10h18" stroke={viewMode === "calendar" ? "var(--redo-brand)" : "#B4B2A9"} strokeWidth="1.8" strokeLinecap="round" />
               </svg>
             </button>
           </>
@@ -218,137 +234,151 @@ function FilterChipsRow({
     return () => document.removeEventListener("mousedown", handler);
   }, [dropOpen]);
 
+  // 상태 필터와 프로젝트 필터 분리
+  const statusChips = chips.filter((c) => c === "미실행" || c === "실행완료" || c === "전체");
+  const projectChips = chips.filter((c) => c !== "미실행" && c !== "실행완료" && c !== "전체");
+
   return (
-    <div className="shrink-0 w-full flex items-center"
+    <div className="shrink-0 w-full"
       style={{
-        paddingLeft: 16, paddingBottom: 10, paddingTop: 2,
+        paddingLeft: 16, paddingRight: 8, paddingBottom: 10, paddingTop: 4,
         background: "var(--redo-bg-primary)",
         borderBottom: "0.5px solid var(--redo-border)",
-        flexWrap: "nowrap",
       }}>
-      <div className="flex-1 overflow-x-auto" style={{ scrollbarWidth: "none", minWidth: 0 }}>
-        <div className="flex items-center" style={{ gap: 6, width: "max-content" }}>
-          {chips.map((chip) => {
-            const isActive = activeFilters.includes(chip);
-            const isStatusChip = chip === "미실행" || chip === "실행완료";
-            const isAllChip = chip === "전체";
-            const isProjectChip = !isStatusChip && !isAllChip;
-            const bg = isActive
-              ? isStatusChip ? "var(--redo-chip-status-bg)" : "var(--redo-brand-light)"
-              : "var(--redo-bg-secondary)";
-            const color = isActive
-              ? isStatusChip ? "var(--redo-chip-status-text)" : "var(--redo-context-text)"
-              : "var(--redo-text-secondary)";
-            const border = isActive
-              ? isStatusChip ? "0.5px solid rgba(8,80,65,0.2)" : "0.5px solid var(--redo-brand-mid)"
-              : "0.5px solid transparent";
+      {/* 1행: 상태 세그먼트 + 정렬 */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: projectChips.length > 0 ? 8 : 0 }}>
+        {/* 상태 세그먼트 컨트롤 */}
+        <div style={{
+          display: "flex",
+          background: "var(--redo-bg-secondary)",
+          borderRadius: 8,
+          padding: 2,
+          gap: 0,
+        }}>
+          {statusChips.map((chip) => {
+            const isActive = activeFilters.includes(chip) || (chip === "전체" && activeFilters.length === 0);
             return (
-              <button key={chip} onClick={() => onToggle(chip)}
+              <button
+                key={chip}
+                onClick={() => onToggle(chip)}
                 style={{
-                  height: 30, minHeight: 44, paddingLeft: 12, paddingRight: 12,
-                  borderRadius: "var(--radius-chip)",
-                  fontSize: "var(--text-body)",
-                  fontWeight: isActive ? "var(--font-weight-medium)" : "var(--font-weight-regular)",
-                  color, background: bg, border, cursor: "pointer",
-                  whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4,
-                  fontFamily: FONT, transition: "all 0.15s ease",
-                }}>
-                {isProjectChip && (
-                  <div style={{
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: folderColors?.[chip] ?? "#6A70FF",
-                    flexShrink: 0,
-                  }} />
-                )}
+                  height: 28, padding: "0 12px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: isActive ? "#fff" : "transparent",
+                  color: isActive
+                    ? chip === "미실행" ? "var(--redo-brand)" : chip === "실행완료" ? "var(--redo-success)" : "var(--redo-text-primary)"
+                    : "var(--redo-text-tertiary)",
+                  fontSize: 12,
+                  fontWeight: isActive ? 600 : 400,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  transition: "all 150ms ease",
+                  boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {chip}
-                {isActive && chip !== "전체" && (
-                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5h6M5 2l3 3-3 3" stroke="currentColor"
-                      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Sort button + dropdown */}
-      <div ref={dropRef} style={{ position: "relative", flexShrink: 0 }}>
-        <button
-          onClick={() => setDropOpen((v) => !v)}
-          style={{
-            height: 30, minHeight: 44,
-            paddingLeft: 10, paddingRight: 16,
-            display: "flex", alignItems: "center", gap: 3,
-            background: "none", border: "none", cursor: "pointer", fontFamily: FONT,
-          }}
-        >
-          <span style={{
-            fontSize: "var(--text-body)", fontWeight: "var(--font-weight-regular)",
-            color: dropOpen ? "var(--redo-brand)" : "var(--redo-text-secondary)",
-            whiteSpace: "nowrap",
-            transition: "color 150ms ease",
-          }}>
-            {sortOrder}
-          </span>
-          <svg
-            width="10" height="10" viewBox="0 0 12 12" fill="none"
-            style={{ transform: dropOpen ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}
+        <div style={{ flex: 1 }} />
+
+        {/* 정렬 드롭다운 */}
+        <div ref={dropRef} style={{ position: "relative", flexShrink: 0 }}>
+          <button
+            onClick={() => setDropOpen((v) => !v)}
+            style={{
+              height: 30, minHeight: 44,
+              paddingLeft: 10, paddingRight: 8,
+              display: "flex", alignItems: "center", gap: 3,
+              background: "none", border: "none", cursor: "pointer", fontFamily: FONT,
+            }}
           >
-            <path d="M2 4l4 4 4-4" stroke={dropOpen ? "var(--redo-brand)" : "var(--redo-text-secondary)"}
-              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+            <span style={{
+              fontSize: 12, fontWeight: 400,
+              color: dropOpen ? "var(--redo-brand)" : "var(--redo-text-secondary)",
+              whiteSpace: "nowrap",
+              transition: "color 150ms ease",
+            }}>
+              {sortOrder}
+            </span>
+            <svg
+              width="10" height="10" viewBox="0 0 12 12" fill="none"
+              style={{ transform: dropOpen ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}
+            >
+              <path d="M2 4l4 4 4-4" stroke={dropOpen ? "var(--redo-brand)" : "var(--redo-text-secondary)"}
+                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
 
-        {dropOpen && (
-          <div style={{
-            position: "absolute",
-            top: 44,
-            right: 0,
-            width: 148,
-            background: "#ffffff",
-            borderRadius: 10,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
-            border: "0.5px solid rgba(0,0,0,0.07)",
-            zIndex: 100,
-            overflow: "hidden",
-          }}>
-            {SORT_OPTIONS.map((opt) => {
-              const isSelected = opt === sortOrder;
-              return (
-                <button
-                  key={opt}
-                  onClick={() => { onSortChange(opt); setDropOpen(false); }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 16px",
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    background: isSelected ? "rgba(106,112,255,0.05)" : "transparent",
-                    border: "none", cursor: "pointer", textAlign: "left",
-                    fontFamily: FONT,
-                  }}
-                >
-                  <span style={{
-                    fontSize: 13,
-                    fontWeight: isSelected ? 500 : 400,
-                    color: isSelected ? "var(--redo-brand)" : "var(--redo-text-primary)",
-                    lineHeight: 1.3,
-                  }}>
-                    {opt}
-                  </span>
-                  {isSelected && (
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="var(--redo-brand)"
-                        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {dropOpen && (
+            <div style={{
+              position: "absolute", top: 44, right: 0, width: 148,
+              background: "#ffffff", borderRadius: 10,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
+              border: "0.5px solid rgba(0,0,0,0.07)", zIndex: 100, overflow: "hidden",
+            }}>
+              {SORT_OPTIONS.map((opt) => {
+                const isSelected = opt === sortOrder;
+                return (
+                  <button key={opt} onClick={() => { onSortChange(opt); setDropOpen(false); }}
+                    style={{
+                      width: "100%", padding: "10px 16px",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: isSelected ? "rgba(106,112,255,0.05)" : "transparent",
+                      border: "none", cursor: "pointer", textAlign: "left", fontFamily: FONT,
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 13, fontWeight: isSelected ? 500 : 400,
+                      color: isSelected ? "var(--redo-brand)" : "var(--redo-text-primary)",
+                    }}>{opt}</span>
+                    {isSelected && (
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="var(--redo-brand)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 2행: 프로젝트 폴더 칩 (있을 경우만) */}
+      {projectChips.length > 0 && (
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingRight: 8 }}>
+          {projectChips.map((chip) => {
+            const isActive = activeFilters.includes(chip);
+            return (
+              <button key={chip} onClick={() => onToggle(chip)}
+                style={{
+                  height: 26, paddingLeft: 10, paddingRight: 10,
+                  borderRadius: 999, flexShrink: 0,
+                  fontSize: 11,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "var(--redo-brand)" : "var(--redo-text-secondary)",
+                  background: isActive ? "var(--redo-brand-light)" : "transparent",
+                  border: isActive ? "0.5px solid var(--redo-brand-mid)" : "0.5px solid var(--redo-border)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4,
+                  fontFamily: FONT, transition: "all 0.15s ease",
+                }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: folderColors?.[chip] ?? "#6A70FF",
+                  flexShrink: 0,
+                }} />
+                {chip}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -563,6 +593,144 @@ function ListCard({ card, onTap, executedCardIds, folderColors, isSelected }: { 
   );
 }
 
+// ─── Calendar View ───────────────────────────────────────────────────────────
+
+function CalendarView({
+  cards,
+  executedCardIds,
+  onCardTap,
+}: {
+  cards: CardData[];
+  executedCardIds?: Set<number>;
+  onCardTap?: (card: CardData) => void;
+}) {
+  // 카드를 deadline 또는 저장일 기준으로 그룹화
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  // Group cards by deadline
+  const withDeadline = cards.filter((c) => c.deadline);
+  const withoutDeadline = cards.filter((c) => !c.deadline);
+
+  // Sort by deadline ascending
+  const sorted = [...withDeadline].sort((a, b) =>
+    (a.deadline ?? "").localeCompare(b.deadline ?? "")
+  );
+
+  // Group by date
+  const groups = new Map<string, CardData[]>();
+  sorted.forEach((c) => {
+    const key = c.deadline!;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(c);
+  });
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso + "T00:00:00");
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
+    const wd = weekDays[d.getDay()];
+    if (iso === today) return `오늘 (${month}/${day} ${wd})`;
+    if (iso < today) return `마감 지남 — ${month}/${day} (${wd})`;
+    return `${month}/${day} (${wd})`;
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {Array.from(groups.entries()).map(([date, dateCards]) => {
+        const isPast = date < today;
+        const isToday = date === today;
+        return (
+          <div key={date}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              marginBottom: 8, paddingLeft: 2,
+            }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: isPast ? "var(--redo-danger, #E53935)" : isToday ? "var(--redo-brand)" : "var(--redo-text-tertiary)",
+              }} />
+              <span style={{
+                fontSize: 12, fontWeight: 600,
+                color: isPast ? "var(--redo-danger, #E53935)" : isToday ? "var(--redo-brand)" : "var(--redo-text-primary)",
+                fontFamily: FONT,
+              }}>
+                {formatDate(date)}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
+                {dateCards.length}개
+              </span>
+            </div>
+            {dateCards.map((c) => {
+              const isDone = (executedCardIds?.has(c.id) ?? false) || c.statusDot === "실행완료";
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => onCardTap?.(c)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 10px", marginBottom: 4,
+                    background: "var(--redo-bg-primary)",
+                    borderRadius: 10,
+                    border: "0.5px solid var(--redo-border)",
+                    cursor: "pointer",
+                    opacity: isDone ? 0.6 : 1,
+                  }}
+                >
+                  {c.image && (
+                    <div style={{ width: 36, height: 36, borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+                      <img src={c.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: 12, fontWeight: 500, color: "var(--redo-text-primary)",
+                      margin: 0, lineHeight: 1.4, fontFamily: FONT,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      textDecoration: isDone ? "line-through" : "none",
+                    }}>{c.title}</p>
+                    <span style={{ fontSize: 10, color: "var(--redo-text-tertiary)", fontFamily: FONT }}>{c.projectTag}</span>
+                  </div>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: isDone ? "var(--redo-success)" : "var(--redo-brand)",
+                    flexShrink: 0,
+                  }} />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {/* 기한 없는 카드들 */}
+      {withoutDeadline.length > 0 && (
+        <div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            marginBottom: 8, paddingLeft: 2,
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--redo-bg-secondary)" }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
+              기한 미설정
+            </span>
+            <span style={{ fontSize: 11, color: "var(--redo-text-tertiary)", fontFamily: FONT }}>
+              {withoutDeadline.length}개
+            </span>
+          </div>
+          <p style={{
+            fontSize: 12, color: "var(--redo-text-tertiary)", fontFamily: FONT,
+            margin: 0, textAlign: "center", padding: "12px 0",
+          }}>
+            레퍼런스 저장 시 사용기한을 설정하면 여기에 표시돼요
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Archive Screen ───────────────────────────────────────────────────────────
 
 interface ArchiveScreenProps {
@@ -594,7 +762,7 @@ export function ArchiveScreen({
   const cardSource = cardsProp ?? ALL_CARDS;
   const projectTags = useMemo(() => Array.from(new Set(cardSource.map(c => c.projectTag))), [cardSource]);
   const FILTER_CHIPS = useMemo(() => ["미실행", "실행완료", "전체", ...projectTags], [projectTags]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "calendar">("grid");
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>(["미실행"]);
@@ -926,6 +1094,11 @@ export function ArchiveScreen({
             onClearFilters={resetFilters}
             onFabPress={onFabPress}
           />
+        )}
+
+        {/* ── Calendar View ── */}
+        {viewMode === "calendar" && !emptyVariant && (
+          <CalendarView cards={sortedFiltered} executedCardIds={executedCardIds} onCardTap={onCardTap} />
         )}
 
         {/* ── Grid View ── */}

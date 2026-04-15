@@ -15,6 +15,7 @@ export interface CardData {
   // Supabase 연동 필드 (optional)
   supabaseId?: string;
   executionMemo?: string;
+  deadline?: string; // ISO date string — 사용기한 (레퍼런스 활용 마감일)
   // AI 가공 상태
   processingStatus?: "raw" | "processing" | "processed" | "failed";
   aiAnalysis?: {

@@ -4,6 +4,22 @@ import { BottomNav } from "../components/AppBottomNav";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { type CardData } from "../types";
 import { useBreakpoint } from "../hooks/useBreakpoint";
+import { extractColors, type ExtractedColor } from "../lib/colorExtractor";
+
+// ─── Keyframe injection ───────────────────────────────────────────────────────
+
+const ACTION_STYLE_ID = "redo-action-keyframes";
+if (typeof document !== "undefined" && !document.getElementById(ACTION_STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = ACTION_STYLE_ID;
+  s.textContent = `
+    @keyframes redo-fadein {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(s);
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -143,9 +159,24 @@ function FrontCard({
   onExecute,
   skipTintRef,
   execTintRef,
-  hintSkipRef,
-  hintExecRef,
 }: FrontCardProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [paletteColors, setPaletteColors] = useState<ExtractedColor[]>([]);
+
+  // Extract colors from card image
+  useEffect(() => {
+    setPaletteColors([]);
+    if (!card.image) return;
+    let cancelled = false;
+    extractColors(card.image).then((colors) => {
+      if (!cancelled) setPaletteColors(colors);
+    });
+    return () => { cancelled = true; };
+  }, [card.image]);
+
+  // AI analysis data from card
+  const aiFonts = card.aiAnalysis?.fonts?.filter((f) => f.name) ?? [];
+  const aiKeywords = card.aiAnalysis?.keywords?.filter(Boolean) ?? [];
   // Compute transform from phase
   let tx = 0, ty = 0, rot = 0, opacity = 1, transition = "none";
 
@@ -209,14 +240,25 @@ function FrontCard({
           flexDirection: "column",
         }}
       >
-        {/* Thumbnail — 이미지 영역 강조 */}
-        <div className="relative w-full shrink-0" style={{ height: typeof window !== "undefined" && window.innerWidth >= 768 ? 260 : 180 }}>
-          <ImageWithFallback
-            src={card.image}
-            alt={card.title}
-            className="w-full h-full object-cover"
-            style={{ display: "block", pointerEvents: "none" }}
-          />
+        {/* Thumbnail — 이미지 영역 강조 (flex로 최대 공간 확보) */}
+        <div
+          className="relative w-full"
+          style={{ flex: "1 1 0", minHeight: typeof window !== "undefined" && window.innerWidth >= 768 ? 240 : 180, overflow: "hidden" }}
+        >
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxOpen(true);
+            }}
+            style={{ width: "100%", height: "100%", cursor: "zoom-in" }}
+          >
+            <ImageWithFallback
+              src={card.image}
+              alt={card.title}
+              className="w-full h-full object-cover"
+              style={{ display: "block", pointerEvents: "none" }}
+            />
+          </div>
 
           {/* Skip tint (red, left drag) */}
           <div
@@ -307,8 +349,8 @@ function FrontCard({
 
         {/* Card body */}
         <div
-          className="flex flex-col flex-1"
-          style={{ padding: "12px 14px 14px", gap: 0 }}
+          className="flex flex-col"
+          style={{ padding: "12px 14px 0", gap: 0, flexShrink: 0, overflow: "auto" }}
         >
           {/* Title */}
           <p
@@ -389,8 +431,78 @@ function FrontCard({
             </p>
           </div>
 
+          {/* ── 컬러 팔레트 + 폰트/키워드 ── */}
+          {(paletteColors.length > 0 || aiFonts.length > 0 || aiKeywords.length > 0) && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 12,
+                alignItems: "center",
+              }}
+            >
+              {/* 컬러 스와치 */}
+              {paletteColors.slice(0, 5).map((c, i) => (
+                <div
+                  key={i}
+                  title={c.hex}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    background: c.hex,
+                    border: "1.5px solid rgba(0,0,0,0.08)",
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+              {/* 구분선 */}
+              {paletteColors.length > 0 && (aiFonts.length > 0 || aiKeywords.length > 0) && (
+                <div style={{ width: 1, height: 14, background: "var(--redo-border)", margin: "0 2px" }} />
+              )}
+              {/* 폰트 태그 */}
+              {aiFonts.slice(0, 2).map((f, i) => (
+                <span
+                  key={`f${i}`}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "var(--redo-text-secondary)",
+                    background: "var(--redo-bg-secondary)",
+                    borderRadius: 99,
+                    padding: "2px 8px",
+                    lineHeight: 1.4,
+                    fontFamily: FONT,
+                    border: "0.5px solid var(--redo-border)",
+                  }}
+                >
+                  {f.name}
+                </span>
+              ))}
+              {/* 키워드 */}
+              {aiKeywords.slice(0, 2).map((kw, i) => (
+                <span
+                  key={`k${i}`}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "var(--redo-brand)",
+                    background: "#EEEFFE",
+                    borderRadius: 99,
+                    padding: "2px 8px",
+                    lineHeight: 1.4,
+                    fontFamily: FONT,
+                  }}
+                >
+                  {kw}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: 10, padding: "0 16px 20px" }}>
+          <div style={{ display: "flex", gap: 10, padding: "0 0 14px", flexShrink: 0 }}>
             {/* 건너뜀 */}
             <button
               onClick={(e) => {
@@ -399,7 +511,7 @@ function FrontCard({
               }}
               style={{
                 flex: 1,
-                height: 52,
+                height: 48,
                 borderRadius: 14,
                 background: "#ffffff",
                 color: "#888780",
@@ -426,7 +538,7 @@ function FrontCard({
               }}
               style={{
                 flex: 2,
-                height: 52,
+                height: 48,
                 borderRadius: 14,
                 background: "var(--redo-brand)",
                 color: "#fff",
@@ -448,6 +560,57 @@ function FrontCard({
           </div>
         </div>
       </div>
+
+      {/* ── 이미지 라이트박스 ── */}
+      {lightboxOpen && card.image && (
+        <div
+          onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "redo-fadein 0.15s ease",
+            cursor: "zoom-out",
+          }}
+        >
+          <img
+            src={card.image}
+            alt={card.title}
+            style={{
+              maxWidth: "92vw",
+              maxHeight: "88vh",
+              objectFit: "contain",
+              borderRadius: 12,
+              animation: "redo-fadein 0.2s ease",
+            }}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.15)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

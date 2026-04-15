@@ -1032,6 +1032,7 @@ export interface SavePayload {
   projectTag: string;
   chips: string[];
   source: string;
+  deadline?: string; // ISO date string
 }
 
 interface SaveBottomSheetProps {
@@ -1092,6 +1093,7 @@ export function SaveBottomSheet({
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]); // AI 추천 이유 다중선택
   const [tagPickerOpen, setTagPickerOpen] = useState(false);           // 태그 추가 피커
   const [memoValue, setMemoValue] = useState("");
+  const [deadlineValue, setDeadlineValue] = useState("");
   const [newProject, setNewProject] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -1343,6 +1345,7 @@ export function SaveBottomSheet({
         chips: selectedChips,
         source: meta?.domain ?? extractDomain(urlValue),
         urlValue,
+        deadline: deadlineValue || undefined,
       });
       onClose();
     }, 700);
@@ -1897,6 +1900,61 @@ export function SaveBottomSheet({
               }}
             >
               저장 이유가 있으면 나중에 더 잘 꺼내줄 수 있어
+            </p>
+          </div>
+
+          {/* ── 사용기한 설정 ── */}
+          <div style={{ padding: "0 16px", marginTop: 12 }}>
+            <p style={{
+              fontSize: 11, fontWeight: 600, color: "var(--redo-text-secondary)",
+              margin: "0 0 6px", fontFamily: FONT, letterSpacing: "0.04em",
+            }}>
+              사용기한 (선택)
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="date"
+                value={deadlineValue}
+                onChange={(e) => setDeadlineValue(e.target.value)}
+                min={new Date().toISOString().slice(0, 10)}
+                style={{
+                  flex: 1,
+                  height: 40,
+                  minHeight: 44,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  borderRadius: 10,
+                  border: "0.5px solid var(--redo-border)",
+                  background: deadlineValue ? "#EEEFFE" : "var(--redo-bg-secondary)",
+                  fontSize: 13,
+                  color: deadlineValue ? "var(--redo-brand)" : "var(--redo-text-tertiary)",
+                  fontFamily: FONT,
+                  outline: "none",
+                  boxSizing: "border-box",
+                  transition: "border-color 0.15s ease, background 0.15s ease",
+                }}
+              />
+              {deadlineValue && (
+                <button
+                  onClick={() => setDeadlineValue("")}
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    background: "var(--redo-bg-secondary)", border: "none",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M9 3L3 9M3 3l6 6" stroke="var(--redo-text-tertiary)" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <p style={{
+              fontSize: 10, color: "var(--redo-text-tertiary)", margin: "4px 0 0",
+              fontFamily: FONT, lineHeight: 1.5,
+            }}>
+              기한을 설정하면 보관함 캘린더에서 확인할 수 있어요
             </p>
           </div>
 
