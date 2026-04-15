@@ -65,6 +65,7 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 import { ImportScreen } from "./screens/ImportScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { NFCTriggerScreen } from "./screens/NFCTriggerScreen";
+import { ContextRecommendScreen } from "./screens/ContextRecommendScreen";
 import { useToast } from "./components/Toast";
 import { type CardData, ALL_CARDS } from "./types";
 import { SEED_CARDS } from "./data/seedCards";
@@ -101,8 +102,11 @@ const isFromShare = !!(sharedUrl) || fromShareCache;
 // ─── NFC Trigger param ───────────────────────────────────────────────────────
 const isNFCFromUrl = searchParams.get("nfc") === "true";
 
+// ─── Context Recommend param ─────────────────────────────────────────────────
+const isContextFromUrl = searchParams.get("context") === "true";
+
 // URL 파라미터를 즉시 제거 — 뒤로가기 시 바텀시트가 다시 열리지 않도록
-if (sharedUrl || fromShareCache || isNFCFromUrl) {
+if (sharedUrl || fromShareCache || isNFCFromUrl || isContextFromUrl) {
   window.history.replaceState({}, "", "/");
 }
 
@@ -143,6 +147,9 @@ export default function App() {
 
   // ── NFC Trigger state ─────────────────────────────────────────────────────
   const [isNFCTriggered, setIsNFCTriggered] = useState(isNFCFromUrl);
+
+  // ── Context Recommend state ─────────────────────────────────────────────
+  const [isContextMode, setIsContextMode] = useState(isContextFromUrl);
 
   // ── App screen state ──────────────────────────────────────────────────────
   const [appScreen, setAppScreen] = useState<AppScreen>("loading");
@@ -1155,12 +1162,27 @@ export default function App() {
               <NFCTriggerScreen
                 cards={cards}
                 executedCardIds={executedCardIds}
-                onExecuteNow={(projectTag) => {
+                onExecuteNow={() => {
                   setIsNFCTriggered(false);
                   setActiveTab("활용");
-                  // 프로젝트 필터 자동 적용은 ActionScreen이 마운트될 때 처리
                 }}
                 onDismiss={() => setIsNFCTriggered(false)}
+              />
+            )}
+
+            {/* Context Recommend Screen — 전체 화면 오버레이 (z-index: 72) */}
+            {isContextMode && (
+              <ContextRecommendScreen
+                cards={cards}
+                executedCardIds={executedCardIds}
+                existingProjects={existingProjects}
+                onClose={() => setIsContextMode(false)}
+                onCardTap={(card) => {
+                  setIsContextMode(false);
+                  handleOpenDetail(card);
+                }}
+                onExecuteCard={handleExecuteCard}
+                showToast={showToast}
               />
             )}
           </>
