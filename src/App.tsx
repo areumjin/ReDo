@@ -89,11 +89,15 @@ const BACK_LABELS: Record<ActiveTab, string> = {
 };
 
 // ─── Onboarding gating ────────────────────────────────────────────────────────
+// DEV 모드에서는 ?onboarding=true 없으면 자동 스킵 (매번 온보딩 보는 것 방지)
 
 const searchParams = new URLSearchParams(window.location.search);
 const forceOnboarding = searchParams.get("onboarding") === "true";
 const isAlreadyOnboarded =
-  !forceOnboarding && localStorage.getItem("redo_onboarded") === "true";
+  !forceOnboarding && (
+    localStorage.getItem("redo_onboarded") === "true" ||
+    (import.meta.env.DEV && !forceOnboarding)
+  );
 
 // ─── PWA Share Target params ──────────────────────────────────────────────────
 // Level 1 (GET): URL 파라미터로 전달 (구형 브라우저 호환)
